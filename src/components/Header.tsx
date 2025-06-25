@@ -15,38 +15,23 @@ const Header = () => {
       </div>
       
       <div className="relative max-w-7xl mx-auto">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-5xl font-bold mb-3 bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
-              Tutokenized
-            </h1>
-            <p className="text-blue-100 text-xl font-medium mb-6">
-              AI-Powered GPU Tutoring Platform for Data Science Excellence
-            </p>
-            <div className="flex flex-wrap gap-4 text-sm">
-              <span className="glass-card px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 hover:bg-white/30 transition-all duration-300">
-                🚀 Real-time GPU Simulation
-              </span>
-              <span className="glass-card px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 hover:bg-white/30 transition-all duration-300">
-                📊 Performance Benchmarks
-              </span>
-              <span className="glass-card px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 hover:bg-white/30 transition-all duration-300">
-                🤖 LLM-Assisted Learning
-              </span>
-            </div>
-          </div>
-          
-          {/* GPU Status Indicator */}
-          <div className="hidden lg:flex items-center gap-4 glass-card bg-white/10 backdrop-blur-md border border-white/20 px-6 py-4 rounded-2xl">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-300">78%</div>
-              <div className="text-sm text-blue-100">GPU Utilization</div>
-            </div>
-            <div className="w-px h-12 bg-white/30"></div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-blue-300">12.1s</div>
-              <div className="text-sm text-blue-100">Training Time</div>
-            </div>
+        <div>
+          <h1 className="text-5xl font-bold mb-3 bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
+            Tutokenized
+          </h1>
+          <p className="text-blue-100 text-xl font-medium mb-6">
+            AI-Powered GPU Tutoring Platform for Data Science Excellence
+          </p>
+          <div className="flex flex-wrap gap-4 text-sm">
+            <span className="glass-card px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 hover:bg-white/30 transition-all duration-300">
+              🚀 Real-time GPU Simulation
+            </span>
+            <span className="glass-card px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 hover:bg-white/30 transition-all duration-300">
+              📊 Performance Benchmarks
+            </span>
+            <span className="glass-card px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 hover:bg-white/30 transition-all duration-300">
+              🤖 LLM-Assisted Learning
+            </span>
           </div>
         </div>
       </div>
