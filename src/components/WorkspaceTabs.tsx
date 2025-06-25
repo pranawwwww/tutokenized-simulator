@@ -3,6 +3,7 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RealTimeSimulation from './RealTimeSimulation';
 import Benchmarks from './Benchmarks';
+import VideoSimulation from './VideoSimulation';
 
 interface WorkspaceTabsProps {
   activeTab: string;
@@ -22,6 +23,12 @@ const WorkspaceTabs = ({ activeTab, setActiveTab }: WorkspaceTabsProps) => {
               ⚡ Realtime Simulation
             </TabsTrigger>
             <TabsTrigger 
+              value="video"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg font-semibold px-8 py-3 rounded-xl transition-all duration-300 hover:scale-105"
+            >
+              🎥 Video Simulation
+            </TabsTrigger>
+            <TabsTrigger 
               value="benchmarks"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-lg font-semibold px-8 py-3 rounded-xl transition-all duration-300 hover:scale-105"
             >
@@ -32,6 +39,10 @@ const WorkspaceTabs = ({ activeTab, setActiveTab }: WorkspaceTabsProps) => {
         
         <TabsContent value="simulation" className="p-6 h-[550px]">
           <RealTimeSimulation />
+        </TabsContent>
+        
+        <TabsContent value="video" className="p-6 h-[550px]">
+          <VideoSimulation />
         </TabsContent>
         
         <TabsContent value="benchmarks" className="p-6 h-[550px]">
