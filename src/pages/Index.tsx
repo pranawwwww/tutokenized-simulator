@@ -6,6 +6,7 @@ import TopBar from '../components/TopBar';
 import CodeEditor from '../components/CodeEditor';
 import WorkspaceTabs from '../components/WorkspaceTabs';
 import StatusBar from '../components/StatusBar';
+import ChatbotBubble from '../components/ChatbotBubble';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('simulation');
@@ -29,6 +30,9 @@ const Index = () => {
       
       <StatusBar />
       <Footer />
+      
+      {/* Floating Chatbot Bubble */}
+      <ChatbotBubble />
     </div>
   );
 };
