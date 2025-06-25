@@ -3,49 +3,73 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Upload, Zap, Database } from 'lucide-react';
+import { Upload, Zap, Database, Wifi, WifiOff } from 'lucide-react';
 
 const TopBar = () => {
   const [nvidiaConnected, setNvidiaConnected] = useState(false);
   const [solAccess, setSolAccess] = useState(false);
 
   return (
-    <div className="bg-white border-b border-gray-200 px-8 py-4 shadow-sm">
+    <div className="glass-card bg-white/80 backdrop-blur-xl border-0 border-b border-gray-200/50 px-8 py-6 shadow-lg">
       <div className="flex items-center justify-between max-w-7xl mx-auto">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-8">
           {/* NVIDIA API Connection */}
-          <div className="flex items-center gap-3">
-            <Zap className="w-5 h-5 text-green-600" />
-            <span className="font-medium">NVIDIA APIs</span>
-            <Badge variant={nvidiaConnected ? "default" : "secondary"} className="ml-2">
-              {nvidiaConnected ? "Connected" : "Disconnected"}
-            </Badge>
-            <Button
-              size="sm"
-              variant={nvidiaConnected ? "outline" : "default"}
-              onClick={() => setNvidiaConnected(!nvidiaConnected)}
-              className="ml-2"
-            >
-              {nvidiaConnected ? "Disconnect" : "Connect"}
-            </Button>
+          <div className="flex items-center gap-4 glass-card bg-white/60 backdrop-blur-sm border border-gray-200/50 px-6 py-3 rounded-2xl hover-lift">
+            <div className="flex items-center gap-3">
+              {nvidiaConnected ? (
+                <Wifi className="w-5 h-5 text-green-600" />
+              ) : (
+                <WifiOff className="w-5 h-5 text-red-500" />
+              )}
+              <Zap className="w-5 h-5 text-green-600" />
+              <span className="font-semibold text-gray-800">NVIDIA APIs</span>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <div className={`status-dot ${nvidiaConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
+              <Badge 
+                variant={nvidiaConnected ? "default" : "secondary"} 
+                className={`${nvidiaConnected ? 'bg-green-100 text-green-800 border-green-300' : 'bg-red-100 text-red-800 border-red-300'} font-medium`}
+              >
+                {nvidiaConnected ? "Connected" : "Disconnected"}
+              </Badge>
+              <Button
+                size="sm"
+                variant={nvidiaConnected ? "outline" : "default"}
+                onClick={() => setNvidiaConnected(!nvidiaConnected)}
+                className={`transition-all duration-300 ${
+                  nvidiaConnected 
+                    ? 'hover:bg-red-50 hover:text-red-600 hover:border-red-300' 
+                    : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0'
+                }`}
+              >
+                {nvidiaConnected ? "Disconnect" : "Connect"}
+              </Button>
+            </div>
           </div>
 
           {/* Sol Access Toggle */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4 glass-card bg-white/60 backdrop-blur-sm border border-gray-200/50 px-6 py-3 rounded-2xl hover-lift">
             <Database className="w-5 h-5 text-purple-600" />
-            <span className="font-medium">Sol Access</span>
-            <Switch
-              checked={solAccess}
-              onCheckedChange={setSolAccess}
-              className="ml-2"
-            />
+            <span className="font-semibold text-gray-800">Sol Access</span>
+            <div className="flex items-center gap-3">
+              <div className={`status-dot ${solAccess ? 'bg-purple-400' : 'bg-gray-400'}`}></div>
+              <Switch
+                checked={solAccess}
+                onCheckedChange={setSolAccess}
+                className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-purple-500 data-[state=checked]:to-indigo-500"
+              />
+            </div>
           </div>
         </div>
 
         {/* Dataset Upload */}
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="flex items-center gap-2">
-            <Upload className="w-4 h-4" />
+          <Button 
+            variant="outline" 
+            className="glass-card bg-white/60 backdrop-blur-sm border border-gray-200/50 hover:bg-white/80 hover:scale-105 transition-all duration-300 px-6 py-3 rounded-2xl font-medium"
+          >
+            <Upload className="w-5 h-5 mr-2" />
             Upload Dataset
           </Button>
         </div>

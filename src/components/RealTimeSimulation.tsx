@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Cpu, Zap, Battery } from 'lucide-react';
+import { Cpu, Zap, Battery, Activity, Thermometer } from 'lucide-react';
 
 const RealTimeSimulation = () => {
   const [cpuUsage] = useState(45);
@@ -12,134 +11,171 @@ const RealTimeSimulation = () => {
   const [energyUsage] = useState(62);
 
   return (
-    <Card className="h-full shadow-lg">
-      <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg">
-        <CardTitle>Real-time GPU Simulation</CardTitle>
-      </CardHeader>
-      <CardContent className="p-6">
-        <Tabs defaultValue="cpu" className="h-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
-            <TabsTrigger value="cpu" className="flex items-center gap-2">
-              <Cpu className="w-4 h-4" />
-              CPU
-            </TabsTrigger>
-            <TabsTrigger value="gpu" className="flex items-center gap-2">
-              <Zap className="w-4 h-4" />
-              GPU
-            </TabsTrigger>
-            <TabsTrigger value="energy" className="flex items-center gap-2">
-              <Battery className="w-4 h-4" />
-              Energy
-            </TabsTrigger>
-          </TabsList>
+    <div className="h-full">
+      <Tabs defaultValue="cpu" className="h-full">
+        <TabsList className="glass-card bg-white/50 backdrop-blur-sm border border-white/30 p-2 rounded-2xl shadow-lg mb-6">
+          <TabsTrigger 
+            value="cpu" 
+            className="flex items-center gap-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-lg font-semibold px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105"
+          >
+            <Cpu className="w-5 h-5" />
+            CPU
+          </TabsTrigger>
+          <TabsTrigger 
+            value="gpu" 
+            className="flex items-center gap-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-lg font-semibold px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105"
+          >
+            <Zap className="w-5 h-5" />
+            GPU
+          </TabsTrigger>
+          <TabsTrigger 
+            value="energy" 
+            className="flex items-center gap-3 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-lg font-semibold px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105"
+          >
+            <Battery className="w-5 h-5" />
+            Energy
+          </TabsTrigger>
+        </TabsList>
 
-          <TabsContent value="cpu" className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-blue-800 mb-2">CPU Utilization</h3>
-                <Progress value={cpuUsage} className="mb-2" />
-                <p className="text-sm text-blue-600">{cpuUsage}% Active</p>
-              </div>
-              <div className="bg-green-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-green-800 mb-2">Thread Count</h3>
-                <div className="text-2xl font-bold text-green-700">12/16</div>
-                <p className="text-sm text-green-600">Threads in use</p>
-              </div>
-            </div>
-            <div className="bg-white border rounded-lg p-4">
-              <h4 className="font-medium mb-3 flex items-center gap-2">
-                <Badge variant="outline">Real-time</Badge>
-                CPU Performance Metrics
-              </h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>Clock Speed:</span>
-                  <span className="font-mono">3.2 GHz</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Cache Hit Rate:</span>
-                  <span className="font-mono">94.2%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Memory Usage:</span>
-                  <span className="font-mono">8.4/32 GB</span>
-                </div>
+        <TabsContent value="cpu" className="space-y-6">
+          <div className="grid grid-cols-2 gap-6">
+            <div className="glass-card bg-gradient-to-br from-blue-50/80 to-cyan-50/80 backdrop-blur-sm border border-blue-200/50 p-6 rounded-2xl hover-lift">
+              <h3 className="font-bold text-blue-800 mb-4 flex items-center gap-2">
+                <Activity className="w-5 h-5" />
+                CPU Utilization
+              </h3>
+              <Progress value={cpuUsage} className="mb-4 h-3 bg-blue-100" />
+              <div className="flex items-center justify-between">
+                <p className="text-2xl font-bold text-blue-700">{cpuUsage}%</p>
+                <Badge className="bg-blue-100 text-blue-800 border-blue-300">Active</Badge>
               </div>
             </div>
-          </TabsContent>
+            
+            <div className="glass-card bg-gradient-to-br from-green-50/80 to-emerald-50/80 backdrop-blur-sm border border-green-200/50 p-6 rounded-2xl hover-lift">
+              <h3 className="font-bold text-green-800 mb-4 flex items-center gap-2">
+                <Cpu className="w-5 h-5" />
+                Thread Count
+              </h3>
+              <div className="text-4xl font-bold text-green-700 mb-2">12/16</div>
+              <p className="text-green-600 font-medium">Threads in use</p>
+            </div>
+          </div>
+          
+          <div className="glass-card bg-white/60 backdrop-blur-sm border border-gray-200/50 rounded-2xl p-6">
+            <h4 className="font-bold mb-4 flex items-center gap-3">
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">Real-time</Badge>
+              CPU Performance Metrics
+            </h4>
+            <div className="grid grid-cols-3 gap-6">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-gray-600 font-medium">Clock Speed:</span>
+                <span className="font-mono text-gray-800">3.2 GHz</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-gray-600 font-medium">Cache Hit Rate:</span>
+                <span className="font-mono text-gray-800">94.2%</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-gray-600 font-medium">Memory Usage:</span>
+                <span className="font-mono text-gray-800">8.4/32 GB</span>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
 
-          <TabsContent value="gpu" className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-purple-800 mb-2">GPU Utilization</h3>
-                <Progress value={gpuUsage} className="mb-2" />
-                <p className="text-sm text-purple-600">{gpuUsage}% Active</p>
-              </div>
-              <div className="bg-orange-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-orange-800 mb-2">CUDA Cores</h3>
-                <div className="text-2xl font-bold text-orange-700">2048/2560</div>
-                <p className="text-sm text-orange-600">Cores in use</p>
-              </div>
-            </div>
-            <div className="bg-white border rounded-lg p-4">
-              <h4 className="font-medium mb-3 flex items-center gap-2">
-                <Badge variant="outline">NVIDIA RTX 4080</Badge>
-                GPU Performance Metrics
-              </h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>Memory Clock:</span>
-                  <span className="font-mono">1.4 GHz</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>VRAM Usage:</span>
-                  <span className="font-mono">6.2/16 GB</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Temperature:</span>
-                  <span className="font-mono">72°C</span>
-                </div>
+        <TabsContent value="gpu" className="space-y-6">
+          <div className="grid grid-cols-2 gap-6">
+            <div className="glass-card bg-gradient-to-br from-purple-50/80 to-pink-50/80 backdrop-blur-sm border border-purple-200/50 p-6 rounded-2xl hover-lift pulse-glow">
+              <h3 className="font-bold text-purple-800 mb-4 flex items-center gap-2">
+                <Zap className="w-5 h-5" />
+                GPU Utilization
+              </h3>
+              <Progress value={gpuUsage} className="mb-4 h-3 bg-purple-100" />
+              <div className="flex items-center justify-between">
+                <p className="text-2xl font-bold text-purple-700">{gpuUsage}%</p>
+                <Badge className="bg-purple-100 text-purple-800 border-purple-300">High Load</Badge>
               </div>
             </div>
-          </TabsContent>
+            
+            <div className="glass-card bg-gradient-to-br from-orange-50/80 to-red-50/80 backdrop-blur-sm border border-orange-200/50 p-6 rounded-2xl hover-lift">
+              <h3 className="font-bold text-orange-800 mb-4 flex items-center gap-2">
+                <Activity className="w-5 h-5" />
+                CUDA Cores
+              </h3>
+              <div className="text-4xl font-bold text-orange-700 mb-2">2048/2560</div>
+              <p className="text-orange-600 font-medium">Cores in use</p>
+            </div>
+          </div>
+          
+          <div className="glass-card bg-white/60 backdrop-blur-sm border border-gray-200/50 rounded-2xl p-6">
+            <h4 className="font-bold mb-4 flex items-center gap-3">
+              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-300">NVIDIA RTX 4080</Badge>
+              GPU Performance Metrics
+            </h4>
+            <div className="grid grid-cols-3 gap-6">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-gray-600 font-medium">Memory Clock:</span>
+                <span className="font-mono text-gray-800">1.4 GHz</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-gray-600 font-medium">VRAM Usage:</span>
+                <span className="font-mono text-gray-800">6.2/16 GB</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-gray-600 font-medium">Temperature:</span>
+                <span className="font-mono text-gray-800">72°C</span>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
 
-          <TabsContent value="energy" className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-green-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-green-800 mb-2">Power Consumption</h3>
-                <Progress value={energyUsage} className="mb-2" />
-                <p className="text-sm text-green-600">{energyUsage}% of 350W TDP</p>
-              </div>
-              <div className="bg-yellow-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-yellow-800 mb-2">Efficiency Score</h3>
-                <div className="text-2xl font-bold text-yellow-700">A+</div>
-                <p className="text-sm text-yellow-600">Power efficiency</p>
-              </div>
-            </div>
-            <div className="bg-white border rounded-lg p-4">
-              <h4 className="font-medium mb-3 flex items-center gap-2">
-                <Badge variant="outline">Energy Monitor</Badge>
-                Power Analysis
-              </h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>Current Draw:</span>
-                  <span className="font-mono">217W</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Peak Power:</span>
-                  <span className="font-mono">285W</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Energy Cost/Hour:</span>
-                  <span className="font-mono">$0.034</span>
+        <TabsContent value="energy" className="space-y-6">
+          <div className="grid grid-cols-2 gap-6">
+            <div className="glass-card bg-gradient-to-br from-green-50/80 to-emerald-50/80 backdrop-blur-sm border border-green-200/50 p-6 rounded-2xl hover-lift">
+              <h3 className="font-bold text-green-800 mb-4 flex items-center gap-2">
+                <Battery className="w-5 h-5" />
+                Power Consumption
+              </h3>
+              <Progress value={energyUsage} className="mb-4 h-3 bg-green-100" />
+              <div className="flex items-center justify-between">
+                <p className="text-lg text-green-600">{energyUsage}% of 350W TDP</p>
+                <div className="flex items-center gap-2">
+                  <Thermometer className="w-4 h-4 text-green-600" />
+                  <span className="text-green-700 font-semibold">72°C</span>
                 </div>
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+            
+            <div className="glass-card bg-gradient-to-br from-yellow-50/80 to-amber-50/80 backdrop-blur-sm border border-yellow-200/50 p-6 rounded-2xl hover-lift">
+              <h3 className="font-bold text-yellow-800 mb-4">Efficiency Score</h3>
+              <div className="text-6xl font-bold text-yellow-700 mb-2">A+</div>
+              <p className="text-yellow-600 font-medium">Power efficiency</p>
+            </div>
+          </div>
+          
+          <div className="glass-card bg-white/60 backdrop-blur-sm border border-gray-200/50 rounded-2xl p-6">
+            <h4 className="font-bold mb-4 flex items-center gap-3">
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">Energy Monitor</Badge>
+              Power Analysis
+            </h4>
+            <div className="grid grid-cols-3 gap-6">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-gray-600 font-medium">Current Draw:</span>
+                <span className="font-mono text-gray-800">217W</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-gray-600 font-medium">Peak Power:</span>
+                <span className="font-mono text-gray-800">285W</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-gray-600 font-medium">Energy Cost/Hour:</span>
+                <span className="font-mono text-gray-800">$0.034</span>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
 

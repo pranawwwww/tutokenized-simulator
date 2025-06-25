@@ -12,18 +12,18 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState('simulation');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-purple-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/50 flex flex-col font-inter">
       <Header />
       <TopBar />
       
-      <main className="flex-1 flex gap-6 p-6">
+      <main className="flex-1 flex gap-8 p-8">
         {/* Left Panel - Code Editor */}
-        <div className="w-1/3">
+        <div className="w-1/3 hover-lift">
           <CodeEditor />
         </div>
         
         {/* Center Workspace */}
-        <div className="flex-1">
+        <div className="flex-1 hover-lift">
           <WorkspaceTabs activeTab={activeTab} setActiveTab={setActiveTab} />
         </div>
       </main>
