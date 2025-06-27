@@ -1,0 +1,14 @@
+{
+  "id": "fe0f8048-aa9c-4ef4-8d60-1d642448d79d",
+  "success": true,
+  "output": "Hello from local Python execution!\n10 + 20 = 30\nCount: 0\nCount: 1\nCount: 2\nCount: 3\nCount: 4\nSquares: [1, 4, 9, 16, 25]\nExecution completed successfully!\n",
+  "error": "",
+  "execution_time": 0.074,
+  "timestamp": "2025-06-27T10:57:08.472Z",
+  "code": "# Local Python Execution Example\nprint(\"Hello from local Python execution!\")\n\n# Basic calculations\nx = 10\ny = 20\nresult = x + y\nprint(f\"{x} + {y} = {result}\")\n\n# Loop example\nfor i in range(5):\n    print(f\"Count: {i}\")\n\n# Function example\ndef calculate_square(n):\n    return n ** 2\n\nsquares = [calculate_square(i) for i in range(1, 6)]\nprint(f\"Squares: {squares}\")\n\nprint(\"Execution completed successfully!\")",
+  "system_info": {
+    "platform": "linux",
+    "node_version": "v22.17.0",
+    "python_command": "python3"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "id": "7944944f-c9f6-4c12-8a9b-c01ff6ff6f71",
+  "success": true,
+  "output": "Hello from Python!\n5 + 3 = 8\n",
+  "error": "",
+  "execution_time": 0.026,
+  "timestamp": "2025-06-27T11:17:20.152Z",
+  "code": "print(\"Hello from Python!\")\nresult = 5 + 3\nprint(f\"5 + 3 = {result}\")"
+}

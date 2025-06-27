@@ -1,0 +1,67 @@
+{
+  "id": "019db2b8-8c9e-4072-a039-712c4a11731a",
+  "success": true,
+  "output": "Hello from test!\n2 + 2 = 4\n",
+  "error": "",
+  "execution_time": 0.026,
+  "timestamp": "2025-06-27T11:54:18.729Z",
+  "code": "print(\"Hello from test!\")\nresult = 2 + 2\nprint(f\"2 + 2 = {result}\")",
+  "system_metrics": {
+    "cpu": {
+      "usage": 17,
+      "threads": 48,
+      "clockSpeed": 0,
+      "temperature": 0,
+      "model": "AMD EPYC 7413 24-Core Processor"
+    },
+    "memory": {
+      "total": 503,
+      "used": 24,
+      "free": 479,
+      "usage_percent": 5
+    },
+    "gpu": {
+      "usage": 0,
+      "memory_used": 1,
+      "memory_total": 81920,
+      "temperature": 31,
+      "name": "NVIDIA A100-SXM4-80GB",
+      "driver_version": "565.57.01"
+    },
+    "system": {
+      "platform": "linux",
+      "arch": "x64",
+      "uptime": 7588974,
+      "loadavg": [
+        1.01,
+        1.09,
+        1.26
+      ],
+      "hostname": "sg004"
+    }
+  },
+  "benchmarks": {
+    "matrix_multiplication": {
+      "time": null,
+      "score": null,
+      "status": "Average"
+    },
+    "memory_access": {
+      "time": null,
+      "score": null,
+      "status": "Average"
+    },
+    "cpu_intensive": {
+      "time": null,
+      "score": null,
+      "status": "Average"
+    },
+    "io_operations": {
+      "time": null,
+      "score": null,
+      "status": "Average"
+    },
+    "python_version": " Linux 4.18.0-553.45.1.el8_10.x86_64\nPython",
+    "system_info": {}
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "id": "e82f7cd7-9254-45bf-9236-f53589e020a8",
+  "success": true,
+  "output": "🚀 Hello from local Python execution!\n==================================================\nCalculation: 15 + 25 = 40\nNumbers: [1, 2, 3, 4, 5]\nSquares: [1, 4, 9, 16, 25]\nCurrent time: 2025-06-27 04:50:45\n\nFibonacci sequence:\nF(0) = 0\nF(1) = 1\nF(2) = 1\nF(3) = 2\nF(4) = 3\nF(5) = 5\nF(6) = 8\nF(7) = 13\n\n✅ Local execution completed successfully!\nCheck the Debug tab to see this output!\n",
+  "error": "",
+  "execution_time": 0.039,
+  "timestamp": "2025-06-27T11:50:45.838Z",
+  "code": "# Welcome to Local Python Execution!\n# Click 'Run Code' to execute this code locally\n\nprint(\"🚀 Hello from local Python execution!\")\nprint(\"=\" * 50)\n\n# Basic calculations\nx = 15\ny = 25\nresult = x + y\nprint(f\"Calculation: {x} + {y} = {result}\")\n\n# Working with data\nnumbers = [1, 2, 3, 4, 5]\nsquares = [n**2 for n in numbers]\nprint(f\"Numbers: {numbers}\")\nprint(f\"Squares: {squares}\")\n\n# Date and time\nimport datetime\ncurrent_time = datetime.datetime.now()\nprint(f\"Current time: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\")\n\n# Simple function\ndef fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)\n\nprint(\"\\nFibonacci sequence:\")\nfor i in range(8):\n    print(f\"F({i}) = {fibonacci(i)}\")\n\nprint(\"\\n✅ Local execution completed successfully!\")\nprint(\"Check the Debug tab to see this output!\")"
+}
