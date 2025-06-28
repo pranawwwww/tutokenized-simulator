@@ -14,6 +14,7 @@ import sqlite3
 import threading
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
+import base64
 
 app = Flask(__name__)
 CORS(app)
@@ -457,6 +458,27 @@ def get_result(task_id):
     result = db.get_result(task_id)
     
     if result:
+        # --- GIF base64 injection logic ---
+        # Try to parse GIF_OUTPUT from result['output']
+        output = result.get('output', '')
+        gif_data = None
+        gif_filename = None
+        import re, json as _json
+        match = re.search(r'GIF_OUTPUT:(\{.*?\})(?:\n|$)', output)
+        if match:
+            try:
+                gif_info = _json.loads(match.group(1))
+                gif_filename = gif_info.get('gif_filename') or gif_info.get('gif_file')
+                if gif_filename and os.path.exists(gif_filename):
+                    with open(gif_filename, 'rb') as f:
+                        gif_data = base64.b64encode(f.read()).decode('utf-8')
+                    gif_info['gif_data'] = gif_data
+                    result['video_data'] = gif_info
+                elif gif_info.get('gif_data'):
+                    # Already present
+                    result['video_data'] = gif_info
+            except Exception as e:
+                print(f"Failed to parse GIF_OUTPUT or read GIF file: {e}")
         return jsonify(result)
     else:
         return jsonify({'error': 'Result not found'}), 404

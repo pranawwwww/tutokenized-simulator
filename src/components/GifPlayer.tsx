@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Download, RefreshCw, Maximize2, Play } from 'lucide-react';
 
 interface GifPlayerProps {
+  gifData?: string; // base64-encoded GIF data
   gifUrl?: string;
   gifFilename?: string;
   fps?: number;
@@ -15,6 +16,7 @@ interface GifPlayerProps {
 }
 
 const GifPlayer: React.FC<GifPlayerProps> = ({ 
+  gifData,
   gifUrl,
   gifFilename, 
   fps = 10, 
@@ -25,10 +27,32 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Construct GIF URL if not provided but filename is available
-  const actualGifUrl = gifUrl || (gifFilename ? `http://localhost:3001/gifs/${gifFilename}` : null);
+  // Prefer gifData (base64) if present, else gifUrl, else filename
+  const actualGifUrl = gifData
+    ? `data:image/gif;base64,${gifData}`
+    : gifUrl || (gifFilename ? `http://localhost:3001/gifs/${gifFilename}` : null);
 
-  console.log('🎞️ GifPlayer props:', { gifUrl, gifFilename, actualGifUrl, frameCount, fps });
+  // --- New: Play GIF as video using HTML5 video if possible ---
+  // This method creates a Blob from the base64 GIF and plays it as a video
+  const getGifVideoUrl = () => {
+    if (!gifData) return null;
+    try {
+      const byteCharacters = atob(gifData);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'image/gif' });
+      return URL.createObjectURL(blob);
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const gifVideoUrl = getGifVideoUrl();
+
+  console.log('🎞️ GifPlayer props:', { gifData, gifUrl, gifFilename, actualGifUrl, frameCount, fps });
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 B';
@@ -104,34 +128,48 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
             </div>
           </div>
         </CardHeader>
-        
         <CardContent className="p-0">
           <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-b-lg overflow-hidden">
-            {/* GIF Container */}
-            <div 
-              className={`relative w-full bg-black flex items-center justify-center ${
-                isFullscreen ? 'fixed inset-0 z-50' : ''
-              }`}
-              style={{ aspectRatio: `${resolution[0]}/${resolution[1]}` }}
-            >
+            {/* --- Prefer video tag if gifVideoUrl is available --- */}
+            {gifVideoUrl ? (
+              <video
+                src={gifVideoUrl}
+                autoPlay
+                loop
+                controls
+                className="max-w-full max-h-full object-contain rounded"
+                style={{ aspectRatio: `${resolution[0]}/${resolution[1]}` }}
+              >
+                Your browser does not support the video tag.
+              </video>
+            ) : actualGifUrl ? (
               <img
                 src={actualGifUrl}
                 alt="WARP Volume Animation"
                 className="max-w-full max-h-full object-contain rounded"
-                style={{ imageRendering: 'crisp-edges' }}
+                style={{ imageRendering: 'crisp-edges', aspectRatio: `${resolution[0]}/${resolution[1]}` }}
               />
-              
-              {isFullscreen && (
-                <Button
-                  onClick={() => setIsFullscreen(false)}
-                  variant="outline"
-                  size="sm"
-                  className="absolute top-4 right-4 text-white border-white/30 hover:bg-white/10 z-10"
-                >
-                  Exit Fullscreen
-                </Button>
-              )}
-            </div>
+            ) : (
+              <div className="aspect-video bg-gradient-to-br from-blue-900/50 to-purple-900/50 flex items-center justify-center rounded-lg">
+                <div className="text-center text-white">
+                  <div className="w-24 h-24 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
+                    <Play className="w-12 h-12 ml-1" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">No GIF Generated</h3>
+                  <p className="text-blue-200">Run the simulation to generate an animated GIF</p>
+                </div>
+              </div>
+            )}
+            {isFullscreen && (
+              <Button
+                onClick={() => setIsFullscreen(false)}
+                variant="outline"
+                size="sm"
+                className="absolute top-4 right-4 text-white border-white/30 hover:bg-white/10 z-10"
+              >
+                Exit Fullscreen
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

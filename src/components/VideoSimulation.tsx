@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -105,6 +104,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
               </Badge>
             </h3>
             <GifPlayer 
+              gifData={actualVideoData?.gif_data}
               gifUrl={actualVideoData?.gif_url}
               gifFilename={actualVideoData?.gif_filename}
               fps={fps}
