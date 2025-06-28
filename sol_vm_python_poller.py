@@ -197,6 +197,19 @@ class SolVMPythonPoller:
                 'vm_info': self._get_vm_info()
             }
 
+    def _extract_video_data(self, stdout: str) -> Optional[Dict[str, Any]]:
+        """Extract VIDEO_OUTPUT data from stdout"""
+        try:
+            # Look for VIDEO_OUTPUT: prefix in stdout
+            for line in stdout.split('\n'):
+                if line.startswith('VIDEO_OUTPUT:'):
+                    video_json = line[len('VIDEO_OUTPUT:'):].strip()
+                    return json.loads(video_json)
+            return None
+        except (json.JSONDecodeError, ValueError) as e:
+            print(f"⚠️ Failed to parse video data: {e}")
+            return None
+
     def _execute_python_code(self, code: str, timeout: int) -> Dict[str, Any]:
         """Execute Python code in a subprocess"""
         try:
@@ -219,7 +232,8 @@ class SolVMPythonPoller:
                     'success': result.returncode == 0,
                     'output': result.stdout,
                     'error': result.stderr,
-                    'return_code': result.returncode
+                    'return_code': result.returncode,
+                    'video_data': self._extract_video_data(result.stdout)  # Extract video data
                 }
                 
             finally:

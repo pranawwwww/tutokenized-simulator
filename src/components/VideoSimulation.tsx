@@ -25,6 +25,17 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('🎬 VideoSimulation received executionResult:', executionResult);
+    if (executionResult?.video_data) {
+      console.log('🎬 Video data found:', executionResult.video_data);
+      console.log('🎬 Frames count:', executionResult.video_data.frames?.length || 0);
+    } else {
+      console.log('🎬 No video_data in executionResult');
+    }
+  }, [executionResult]);
+
   const videoData = executionResult?.video_data;
   const frames = videoData?.frames || [];
   const fps = videoData?.fps || 30;
@@ -142,6 +153,17 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
                 <p className="text-blue-200">
                   GPU Volumetric Rendering with WARP
                 </p>
+                {/* Debug info */}
+                <div className="mt-4 text-xs text-gray-300">
+                  <p>Execution Result: {executionResult ? 'Available' : 'None'}</p>
+                  <p>Video Data: {videoData ? 'Available' : 'None'}</p>
+                  <p>Frames: {frames.length}</p>
+                  {executionResult && (
+                    <pre className="mt-2 text-left bg-black/30 p-2 rounded text-xs overflow-auto max-h-32">
+                      {JSON.stringify(executionResult, null, 2)}
+                    </pre>
+                  )}
+                </div>
               </div>
             </div>
           )}
