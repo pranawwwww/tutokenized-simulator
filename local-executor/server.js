@@ -287,25 +287,26 @@ print("NumPy:", "Available" if HAS_NUMPY else "Not Available")
 print("psutil:", "Available" if HAS_PSUTIL else "Not Available")
 
 # System info
-sys_info = get_system_info()
-for key, value in sys_info.items():
-    print(f"SYS_{key.upper()}:{value}")
+sys_info = get_system_info();
+for (key, value) in Object.entries(sys_info)) {
+    print(`SYS_${key.toUpperCase()}:${value}`);
+}
 
-try:
-    matrix_time = benchmark_matrix_multiplication()
-    memory_time = benchmark_memory_access()
-    cpu_result, cpu_time = benchmark_cpu_intensive()
-    io_time = benchmark_io_operations()
+try {
+    matrix_time = benchmark_matrix_multiplication();
+    memory_time = benchmark_memory_access();
+    cpu_result, cpu_time = benchmark_cpu_intensive();
+    io_time = benchmark_io_operations();
 
-    print(f"MATRIX_MULT_TIME:{matrix_time:.4f}")
-    print(f"MEMORY_ACCESS_TIME:{memory_time:.4f}")
-    print(f"CPU_INTENSIVE_TIME:{cpu_time:.4f}")
-    print(f"IO_OPERATIONS_TIME:{io_time:.4f}")
-    print(f"PYTHON_VERSION:{sys.version.split()[0]}")
-    print("BENCHMARK_END")
-except Exception as e:
-    print(f"BENCHMARK_ERROR:{str(e)}")
-    print("BENCHMARK_END")
+    print(`MATRIX_MULT_TIME:${matrix_time.toFixed(4)}`);
+    print(`MEMORY_ACCESS_TIME:${memory_time.toFixed(4)}`);
+    print(`CPU_INTENSIVE_TIME:${cpu_time.toFixed(4)}`);
+    print(`IO_OPERATIONS_TIME:${io_time.toFixed(4)}`);
+    print(`PYTHON_VERSION:${sys.version.split()[0]}`);
+    print("BENCHMARK_END");
+} catch (Exception e) {
+    print(`BENCHMARK_ERROR:${str(e)}`);
+    print("BENCHMARK_END");
 `;
 
         const benchmarkFile = path.join(__dirname, 'temp', `benchmark_${Date.now()}.py`);
@@ -375,6 +376,78 @@ except Exception as e:
     });
 }
 
+// Function to check for video output files and encode them
+async function checkForVideoFiles() {
+    const videoData = {};
+    
+    try {
+        // Common video file locations
+        const searchPaths = [
+            __dirname,
+            path.join(__dirname, 'warp_output'),
+            path.join(__dirname, 'output'),
+            path.join(__dirname, 'videos'),
+            path.join(__dirname, 'temp')
+        ];
+        
+        const videoExtensions = ['.mp4', '.gif', '.avi', '.mov', '.webm'];
+        
+        for (const searchPath of searchPaths) {
+            if (!fs.existsSync(searchPath)) continue;
+            
+            const files = fs.readdirSync(searchPath);
+            
+            for (const file of files) {
+                const filePath = path.join(searchPath, file);
+                const ext = path.extname(file).toLowerCase();
+                
+                if (videoExtensions.includes(ext)) {
+                    console.log(`📹 Found video file: ${file}`);
+                    
+                    try {
+                        const fileData = fs.readFileSync(filePath);
+                        const base64Data = fileData.toString('base64');
+                        const fileSize = fileData.length;
+                        
+                        const key = ext.substring(1); // Remove the dot
+                        videoData[key] = base64Data;
+                        videoData[`${key}_size`] = fileSize;
+                        
+                        console.log(`✅ Encoded ${file} (${fileSize} bytes)`);
+                        
+                        // Clean up the file after encoding
+                        fs.unlinkSync(filePath);
+                        console.log(`🧹 Cleaned up ${file}`);
+                        
+                    } catch (encodeError) {
+                        console.error(`Failed to encode ${file}:`, encodeError);
+                    }
+                }
+            }
+        }
+        
+        // Clean up empty output directories
+        for (const searchPath of searchPaths) {
+            if (fs.existsSync(searchPath) && searchPath !== __dirname) {
+                try {
+                    const files = fs.readdirSync(searchPath);
+                    if (files.length === 0) {
+                        fs.rmdirSync(searchPath);
+                        console.log(`🧹 Cleaned up empty directory: ${searchPath}`);
+                    }
+                } catch (cleanupError) {
+                    // Ignore cleanup errors
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error checking for video files:', error);
+    }
+    
+    return videoData;
+}
+
 // Middleware
 app.use(cors({
     origin: [
@@ -425,6 +498,78 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Function to check for video output files and encode them
+async function checkForVideoFiles() {
+    const videoData = {};
+    
+    try {
+        // Common video file locations
+        const searchPaths = [
+            __dirname,
+            path.join(__dirname, 'warp_output'),
+            path.join(__dirname, 'output'),
+            path.join(__dirname, 'videos'),
+            path.join(__dirname, 'temp')
+        ];
+        
+        const videoExtensions = ['.mp4', '.gif', '.avi', '.mov', '.webm'];
+        
+        for (const searchPath of searchPaths) {
+            if (!fs.existsSync(searchPath)) continue;
+            
+            const files = fs.readdirSync(searchPath);
+            
+            for (const file of files) {
+                const filePath = path.join(searchPath, file);
+                const ext = path.extname(file).toLowerCase();
+                
+                if (videoExtensions.includes(ext)) {
+                    console.log(`📹 Found video file: ${file}`);
+                    
+                    try {
+                        const fileData = fs.readFileSync(filePath);
+                        const base64Data = fileData.toString('base64');
+                        const fileSize = fileData.length;
+                        
+                        const key = ext.substring(1); // Remove the dot
+                        videoData[key] = base64Data;
+                        videoData[`${key}_size`] = fileSize;
+                        
+                        console.log(`✅ Encoded ${file} (${fileSize} bytes)`);
+                        
+                        // Clean up the file after encoding
+                        fs.unlinkSync(filePath);
+                        console.log(`🧹 Cleaned up ${file}`);
+                        
+                    } catch (encodeError) {
+                        console.error(`Failed to encode ${file}:`, encodeError);
+                    }
+                }
+            }
+        }
+        
+        // Clean up empty output directories
+        for (const searchPath of searchPaths) {
+            if (fs.existsSync(searchPath) && searchPath !== __dirname) {
+                try {
+                    const files = fs.readdirSync(searchPath);
+                    if (files.length === 0) {
+                        fs.rmdirSync(searchPath);
+                        console.log(`🧹 Cleaned up empty directory: ${searchPath}`);
+                    }
+                } catch (cleanupError) {
+                    // Ignore cleanup errors
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error checking for video files:', error);
+    }
+    
+    return videoData;
+}
+
 // Execute Python code endpoint
 app.post('/execute', (req, res) => {
     const { code } = req.body;
@@ -472,10 +617,13 @@ app.post('/execute', (req, res) => {
             const executionTime = (endTime - startTime) / 1000;
             
             console.log(`⏱️ Execution completed in ${executionTime.toFixed(2)}s`);
-            
-            // Get system metrics
+              // Get system metrics
             console.log('📊 Collecting system metrics...');
             const systemMetrics = await getSystemMetrics();
+            
+            // Check for video output files
+            console.log('🎥 Checking for video output files...');
+            const videoData = await checkForVideoFiles();
             
             // Run benchmarks if execution was successful
             let benchmarks = null;
@@ -483,8 +631,7 @@ app.post('/execute', (req, res) => {
                 console.log('🏃 Running performance benchmarks...');
                 benchmarks = await runBenchmarks();
             }
-            
-            const result = {
+              const result = {
                 id: executionId,
                 success: !error,
                 output: stdout || '',
@@ -493,7 +640,10 @@ app.post('/execute', (req, res) => {
                 timestamp: new Date().toISOString(),
                 code: code,
                 system_metrics: systemMetrics,
-                benchmarks: benchmarks
+                benchmarks: benchmarks,
+                video_data: videoData,
+                binary_outputs: {},
+                file_outputs: {}
             };
             
             // Log the result

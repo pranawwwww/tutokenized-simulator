@@ -59,9 +59,8 @@ const Benchmarks = () => {
       default: return "bg-gray-100 text-gray-800";
     }
   };
-
   return (
-    <Card className="h-full shadow-lg">
+    <Card className="shadow-lg">
       <CardHeader className="bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-t-lg">
         <CardTitle className="flex items-center gap-2">
           <BarChart3 className="w-5 h-5" />

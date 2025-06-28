@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import Benchmarks from './Benchmarks';
 import VideoSimulation from './VideoSimulation';
 import Debug from './Debug';
@@ -38,16 +39,20 @@ const WorkspaceTabs = ({ activeTab, setActiveTab, executionResult }: WorkspaceTa
           </TabsList>
         </div>
         
-        <TabsContent value="benchmarks" className="p-6 h-[550px]">
-          <Benchmarks />
+        <TabsContent value="benchmarks" className="p-0 h-[550px]">
+          <ScrollArea className="h-full p-6">
+            <Benchmarks />
+          </ScrollArea>
         </TabsContent>
-        
-        <TabsContent value="video" className="p-6 h-[550px]">
-          <VideoSimulation />
+          <TabsContent value="video" className="p-0 h-[550px]">
+          <ScrollArea className="h-full p-6">
+            <VideoSimulation executionResult={executionResult} />
+          </ScrollArea>
         </TabsContent>
-        
-        <TabsContent value="debug" className="p-6 h-[550px]">
-          <Debug executionResult={executionResult} />
+          <TabsContent value="debug" className="p-0 h-[550px]">
+          <ScrollArea className="h-full p-6">
+            <Debug executionResult={executionResult} />
+          </ScrollArea>
         </TabsContent>
       </Tabs>
     </div>

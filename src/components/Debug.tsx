@@ -222,9 +222,8 @@ const Debug: React.FC<DebugProps> = ({ executionResult }) => {
       </div>
     );
   };
-
   return (
-    <div className="h-full flex flex-col space-y-4">
+    <div className="space-y-4">
       {/* System Metrics Display */}
       {lastResult?.system_metrics && (
         <Card className="glass-card bg-white/70 backdrop-blur-sm border border-gray-200/50">
@@ -304,9 +303,9 @@ const Debug: React.FC<DebugProps> = ({ executionResult }) => {
       </Card>
 
       {/* Output display */}
-      <Card className="glass-card bg-white/70 backdrop-blur-sm border border-gray-200/50 flex-1">
-        <CardContent className="p-0 h-full">
-          <ScrollArea className="h-[500px] w-full">
+      <Card className="glass-card bg-white/70 backdrop-blur-sm border border-gray-200/50">
+        <CardContent className="p-0">
+          <ScrollArea className="h-[300px] w-full">
             <div className="p-6">
               <pre className="text-sm font-mono whitespace-pre-wrap break-words">
                 {output}
