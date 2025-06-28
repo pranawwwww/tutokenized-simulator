@@ -6,42 +6,41 @@ import { Badge } from "@/components/ui/badge";
 import { Play, Pause, RotateCcw, Volume2, Maximize2, Download } from 'lucide-react';
 
 interface VideoSimulationProps {
-  streamData?: {
-    frames: Array<{
-      frame: number;
-      image: string;
-      metrics: {
-        fps: number;
-        frame_time_ms: number;
-        kernel_time_ms: number;
-        vertex_count: number;
-        triangle_count: number;
-      };
-    }>;
-    status: string;
+  executionResult?: {
+    video_data?: {
+      frames?: Array<{
+        frame: number;
+        image: string;
+      }>;
+      fps?: number;
+      resolution?: [number, number];
+      frame_count?: number;
+    };
   };
-  isStreaming?: boolean;
 }
 
-const VideoSimulation: React.FC<VideoSimulationProps> = ({ streamData, isStreaming = false }) => {
+const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentFrame, setCurrentFrame] = useState(0);
-  const [duration, setDuration] = useState(120);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-play when streaming data is available
+  const videoData = executionResult?.video_data;
+  const frames = videoData?.frames || [];
+  const fps = videoData?.fps || 30;
+  const frameCount = videoData?.frame_count || frames.length;
+
+  // Auto-play when video data is available
   useEffect(() => {
-    if (streamData && streamData.frames.length > 0 && isStreaming) {
+    if (frames.length > 0) {
       setIsPlaying(true);
-      setDuration(streamData.frames.length);
     }
-  }, [streamData, isStreaming]);
+  }, [frames.length]);
 
   // Update frame display
   useEffect(() => {
-    if (streamData && streamData.frames.length > 0 && canvasRef.current) {
-      const frame = streamData.frames[Math.min(currentFrame, streamData.frames.length - 1)];
+    if (frames.length > 0 && canvasRef.current) {
+      const frame = frames[Math.min(currentFrame, frames.length - 1)];
       if (frame && frame.image) {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
@@ -56,21 +55,21 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ streamData, isStreami
         img.src = `data:image/jpeg;base64,${frame.image}`;
       }
     }
-  }, [currentFrame, streamData]);
+  }, [currentFrame, frames]);
 
   // Animation loop
   useEffect(() => {
-    if (isPlaying && streamData && streamData.frames.length > 0) {
+    if (isPlaying && frames && frames.length > 0) {
       intervalRef.current = setInterval(() => {
         setCurrentFrame((prev) => {
           const next = prev + 1;
-          if (next >= streamData.frames.length) {
+          if (next >= frames.length) {
             setIsPlaying(false);
             return 0;
           }
           return next;
         });
-      }, 1000 / 30); // 30 FPS playback
+      }, 1000 / fps); // Use actual FPS from video data
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -83,7 +82,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ streamData, isStreami
         clearInterval(intervalRef.current);
       }
     };
-  }, [isPlaying, streamData]);
+  }, [isPlaying, frames, fps]);
 
   const togglePlayPause = () => {
     setIsPlaying(!isPlaying);
@@ -96,8 +95,8 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ streamData, isStreami
 
   const downloadVideo = () => {
     // Create a simple download of the last frame or trigger server video download
-    if (streamData && streamData.frames.length > 0) {
-      const lastFrame = streamData.frames[streamData.frames.length - 1];
+    if (frames && frames.length > 0) {
+      const lastFrame = frames[frames.length - 1];
       const link = document.createElement('a');
       link.href = `data:image/jpeg;base64,${lastFrame.image}`;
       link.download = 'warp_simulation_frame.jpg';
@@ -112,9 +111,8 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ streamData, isStreami
   };
 
   const getCurrentMetrics = () => {
-    if (!streamData || streamData.frames.length === 0) return null;
-    const frame = streamData.frames[Math.min(currentFrame, streamData.frames.length - 1)];
-    return frame?.metrics;
+    // No metrics data in our simple frame structure
+    return null;
   };
 
   const metrics = getCurrentMetrics();
@@ -124,7 +122,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ streamData, isStreami
       <div className="glass-card bg-gradient-to-br from-slate-900/90 to-purple-900/90 backdrop-blur-xl border border-white/20 rounded-3xl overflow-hidden hover-lift">
         <div className="aspect-video bg-gradient-to-br from-gray-800 to-gray-900 relative">
           {/* Canvas for WARP video frames */}
-          {streamData && streamData.frames.length > 0 ? (
+          {frames && frames.length > 0 ? (
             <canvas
               ref={canvasRef}
               className="absolute inset-0 w-full h-full object-contain"
@@ -142,25 +140,9 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ streamData, isStreami
                 </div>
                 <h3 className="text-xl font-semibold mb-2">WARP Volume Simulation</h3>
                 <p className="text-blue-200">
-                  {isStreaming ? 'Receiving stream data...' : 'GPU Volumetric Rendering with WARP'}
+                  GPU Volumetric Rendering with WARP
                 </p>
-                {isStreaming && (
-                  <div className="mt-4">
-                    <div className="animate-pulse w-48 h-2 bg-blue-500/30 rounded-full mx-auto">
-                      <div className="h-2 bg-blue-500 rounded-full w-1/3 animate-pulse"></div>
-                    </div>
-                  </div>
-                )}
               </div>
-            </div>
-          )}
-          
-          {/* Streaming Status Badge */}
-          {isStreaming && (
-            <div className="absolute top-4 right-4">
-              <Badge className="bg-red-500/90 text-white animate-pulse">
-                🔴 LIVE
-              </Badge>
             </div>
           )}
           
@@ -170,7 +152,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ streamData, isStreami
               <div className="flex items-center gap-4">
                 <Button
                   onClick={togglePlayPause}
-                  disabled={!streamData || streamData.frames.length === 0}
+                  disabled={!frames || frames.length === 0}
                   className="w-12 h-12 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 p-0"
                 >
                   {isPlaying ? (
@@ -181,20 +163,20 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ streamData, isStreami
                 </Button>
                 <Button
                   onClick={resetVideo}
-                  disabled={!streamData || streamData.frames.length === 0}
+                  disabled={!frames || frames.length === 0}
                   className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 p-0"
                 >
                   <RotateCcw className="w-4 h-4" />
                 </Button>
                 <Button
                   onClick={downloadVideo}
-                  disabled={!streamData || streamData.frames.length === 0}
+                  disabled={!frames || frames.length === 0}
                   className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 p-0"
                 >
                   <Download className="w-4 h-4" />
                 </Button>
                 <span className="text-sm font-mono">
-                  {streamData ? `${currentFrame + 1}/${streamData.frames.length}` : '0/0'}
+                  {frames ? `${currentFrame + 1}/${frames.length}` : '0/0'}
                 </span>
               </div>
               
@@ -213,8 +195,8 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ streamData, isStreami
               <div 
                 className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
                 style={{ 
-                  width: streamData && streamData.frames.length > 0 
-                    ? `${((currentFrame + 1) / streamData.frames.length) * 100}%` 
+                  width: frames && frames.length > 0 
+                    ? `${((currentFrame + 1) / frames.length) * 100}%` 
                     : '0%' 
                 }}
               />
@@ -265,7 +247,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ streamData, isStreami
           <CardTitle className="flex items-center justify-between">
             <span>Technical Specifications</span>
             <Badge variant="outline" className="bg-white">
-              {streamData?.status || 'Ready'}
+              Ready
             </Badge>
           </CardTitle>
         </CardHeader>

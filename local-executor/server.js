@@ -871,6 +871,31 @@ app.post('/execute', (req, res) => {
             console.log('🎥 Checking for video output files...');
             const videoData = await checkForVideoFiles();
             
+            // Parse VIDEO_OUTPUT from stdout
+            let videoOutput = null;
+            if (stdout && stdout.includes('VIDEO_OUTPUT:')) {
+                try {
+                    const videoOutputMatch = stdout.match(/VIDEO_OUTPUT:(.+)/);
+                    if (videoOutputMatch) {
+                        videoOutput = JSON.parse(videoOutputMatch[1]);
+                        console.log(`🎬 Parsed video output with ${videoOutput.frames?.length || 0} frames`);
+                    }
+                } catch (parseError) {
+                    console.warn('⚠️ Failed to parse VIDEO_OUTPUT:', parseError.message);
+                }
+            }
+            
+            // Combine video data
+            const combinedVideoData = {
+                ...videoData,
+                ...(videoOutput && { 
+                    frames: videoOutput.frames,
+                    frame_count: videoOutput.total_frames,
+                    fps: videoOutput.fps,
+                    resolution: videoOutput.resolution 
+                })
+            };
+            
             // Run benchmarks if execution was successful
             let benchmarks = null;
             if (!error) {
@@ -887,7 +912,7 @@ app.post('/execute', (req, res) => {
                 code: code,
                 system_metrics: systemMetrics,
                 benchmarks: benchmarks,
-                video_data: videoData,
+                video_data: combinedVideoData,
                 binary_outputs: {},
                 file_outputs: {}
             };
