@@ -28,19 +28,30 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
   fileSizeBytes = 0
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
-
   // Prefer gifBytestream if present, then gifData (base64), else gifUrl, else filename
   const getGifBlobUrl = () => {
     if (gifBytestream && gifBytestream.length > 0) {
       try {
+        console.log('🔧 Creating blob from bytestream:', {
+          length: gifBytestream.length,
+          firstBytes: gifBytestream.slice(0, 10),
+          isValidArray: Array.isArray(gifBytestream) && gifBytestream.every(b => typeof b === 'number' && b >= 0 && b <= 255)
+        });
         const byteArray = new Uint8Array(gifBytestream);
         const blob = new Blob([byteArray], { type: 'image/gif' });
-        return URL.createObjectURL(blob);
+        const url = URL.createObjectURL(blob);
+        console.log('✅ Bytestream blob created successfully:', { blobSize: blob.size, url });
+        return url;
       } catch (e) {
+        console.error('❌ Bytestream blob creation failed:', e);
         return null;
       }
     } else if (gifData) {
       try {
+        console.log('🔧 Creating blob from base64:', {
+          length: gifData.length,
+          validBase64: /^[A-Za-z0-9+/]*={0,2}$/.test(gifData)
+        });
         const byteCharacters = atob(gifData);
         const byteNumbers = new Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {
@@ -48,11 +59,15 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
         }
         const byteArray = new Uint8Array(byteNumbers);
         const blob = new Blob([byteArray], { type: 'image/gif' });
-        return URL.createObjectURL(blob);
+        const url = URL.createObjectURL(blob);
+        console.log('✅ Base64 blob created successfully:', { blobSize: blob.size, url });
+        return url;
       } catch (e) {
+        console.error('❌ Base64 blob creation failed:', e);
         return null;
       }
     }
+    console.log('⚠️ No valid GIF data found for blob creation');
     return null;
   };
 
@@ -62,6 +77,54 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
     : gifUrl || (gifFilename ? `http://localhost:3001/gifs/${gifFilename}` : null);
 
   console.log('🎞️ GifPlayer props:', { gifData, gifUrl, gifFilename, actualGifUrl, frameCount, fps });
+  // --- Enhanced debugging for gif data reception ---
+  console.log('🔍 GifPlayer Debug (Enhanced):', {
+    hasGifData: !!gifData,
+    gifDataLength: gifData ? gifData.length : 0,
+    gifDataStart: gifData ? gifData.substring(0, 20) : null,
+    gifDataValidBase64: gifData ? /^[A-Za-z0-9+/]*={0,2}$/.test(gifData) : false,
+    hasGifBytestream: !!gifBytestream,
+    gifBytestreamLength: gifBytestream ? gifBytestream.length : 0,
+    gifBytestreamType: typeof gifBytestream,
+    gifBytestreamIsArray: Array.isArray(gifBytestream),
+    hasGifUrl: !!gifUrl,
+    hasGifFilename: !!gifFilename,
+    actualGifUrl,
+    gifBlobUrl,
+    // Test if bytestream looks like valid GIF data
+    bytestreamStartsWithGIF: gifBytestream && gifBytestream.length >= 6 ? 
+      String.fromCharCode(...gifBytestream.slice(0, 6)) === 'GIF89a' || String.fromCharCode(...gifBytestream.slice(0, 6)) === 'GIF87a' : false
+  });
+
+  // --- Test bytestream conversion ---
+  if (gifBytestream && gifBytestream.length > 0) {
+    console.log('🔧 Testing bytestream conversion:', {
+      bytestreamType: typeof gifBytestream,
+      isArray: Array.isArray(gifBytestream),
+      firstFewBytes: gifBytestream.slice(0, 10),
+      lastFewBytes: gifBytestream.slice(-10)
+    });
+    
+    try {
+      const testByteArray = new Uint8Array(gifBytestream);
+      const testBlob = new Blob([testByteArray], { type: 'image/gif' });
+      console.log('✅ Bytestream conversion successful:', {
+        uint8ArrayLength: testByteArray.length,
+        blobSize: testBlob.size,
+        blobType: testBlob.type
+      });
+    } catch (e) {
+      console.error('❌ Bytestream conversion failed:', e);
+    }
+  }
+
+  // --- Test base64 conversion ---
+  if (gifData && !gifBytestream) {
+    console.log('🔧 Testing base64 conversion:', {
+      base64Length: gifData.length,
+      startsWithGifHeader: gifData.startsWith('R0lGOD') // GIF header in base64
+    });
+  }
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 B';
@@ -138,19 +201,47 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-b-lg overflow-hidden">
-            {/* --- Prefer video tag if gifBlobUrl is available --- */}
+          <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-b-lg overflow-hidden">            {/* --- Enhanced GIF display with multiple fallbacks --- */}
             {gifBlobUrl ? (
-              <video
-                src={gifBlobUrl}
-                autoPlay
-                loop
-                controls
-                className="max-w-full max-h-full object-contain rounded"
-                style={{ aspectRatio: `${resolution[0]}/${resolution[1]}` }}
-              >
-                Your browser does not support the video tag.
-              </video>
+              <div className="relative">
+                <video
+                  src={gifBlobUrl}
+                  autoPlay
+                  loop
+                  muted
+                  controls
+                  className="max-w-full max-h-full object-contain rounded"
+                  style={{ aspectRatio: `${resolution[0]}/${resolution[1]}` }}
+                  onError={(e) => {
+                    console.error('❌ Video tag failed to load GIF blob:', e);
+                  }}
+                  onLoadStart={() => {
+                    console.log('🎬 Video tag started loading GIF blob');
+                  }}
+                  onLoadedData={() => {
+                    console.log('✅ Video tag successfully loaded GIF blob');
+                  }}
+                >
+                  {/* Fallback to img tag if video fails */}
+                  <img
+                    src={gifBlobUrl}
+                    alt="WARP Volume Animation"
+                    className="max-w-full max-h-full object-contain rounded"
+                    style={{ imageRendering: 'crisp-edges', aspectRatio: `${resolution[0]}/${resolution[1]}` }}
+                    onError={(e) => {
+                      console.error('❌ Img tag also failed to load GIF blob:', e);
+                    }}
+                    onLoad={() => {
+                      console.log('✅ Img tag successfully loaded GIF blob');
+                    }}
+                  />
+                  Your browser does not support the video tag or the GIF format.
+                </video>
+                {/* Debug overlay */}
+                <div className="absolute top-2 left-2 bg-black/70 text-white text-xs p-2 rounded opacity-50 hover:opacity-100 transition-opacity">
+                  Blob URL: {gifBlobUrl.substring(0, 30)}...
+                </div>
+              </div>
             ) : actualGifUrl ? (
               <img
                 src={actualGifUrl}

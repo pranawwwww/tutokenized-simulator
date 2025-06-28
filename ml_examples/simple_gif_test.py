@@ -58,11 +58,27 @@ frames[0].save(
 # Get file size
 gif_file_size = os.path.getsize(gif_filename)
 
+# --- NEW: Read GIF as base64 and bytestream for testing ---
+with open(gif_filename, 'rb') as f:
+    gif_bytes = f.read()
+
+gif_base64 = base64.b64encode(gif_bytes).decode('utf-8')
+gif_bytestream = list(gif_bytes)
+
+print(f"🔧 GIF Test Data:")
+print(f"  File size: {gif_file_size} bytes")
+print(f"  Base64 length: {len(gif_base64)} chars")
+print(f"  Bytestream length: {len(gif_bytestream)} ints")
+print(f"  First 10 bytes: {gif_bytestream[:10]}")
+print(f"  GIF header (first 6 bytes): {gif_bytes[:6]}")
+
 # Create output structure matching our backend expectations
 gif_output = {
     'type': 'gif_animation',
     'gif_file': gif_filename,
     'gif_filename': gif_filename,
+    'gif_data': gif_base64,  # Include base64 for testing
+    'gif_bytestream': gif_bytestream,  # Include bytestream for testing
     'fps': 6,  # ~150ms per frame = 6.67 FPS
     'resolution': list(resolution),
     'frame_count': len(frames),

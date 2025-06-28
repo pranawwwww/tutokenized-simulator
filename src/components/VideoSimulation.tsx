@@ -23,6 +23,8 @@ interface VideoSimulationProps {
       frame_count?: number;
       duration?: number;
       // GIF-specific data
+      gif_data?: string; // base64-encoded GIF data
+      gif_bytestream?: number[]; // raw GIF bytestream as array of ints
       gif_url?: string;
       gif_filename?: string;
       file_size_bytes?: number;
@@ -70,14 +72,12 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
   const hasVideoFrames = actualVideoData?.type === 'video_frames' && 
                         actualVideoData?.frames && 
                         actualVideoData.frames.length > 0;
-
   const hasGifData = actualVideoData?.type === 'gif_animation' && 
-                    (actualVideoData?.gif_url || actualVideoData?.gif_filename);
+                    (actualVideoData?.gif_data || actualVideoData?.gif_bytestream || actualVideoData?.gif_url || actualVideoData?.gif_filename);
   
   const frames = actualVideoData?.frames || [];
   const fps = actualVideoData?.fps || 30;
   const resolution = actualVideoData?.resolution || [512, 384];
-
   console.log('🎬 VideoSimulation render:', {
     hasVideoFrames,
     hasGifData,
@@ -88,7 +88,18 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
     videoDataType: actualVideoData?.type,
     videoDataKeys: actualVideoData ? Object.keys(actualVideoData) : [],
     fullVideoData: actualVideoData,
-    fallbackVideoData
+    fallbackVideoData,
+    // --- Enhanced GIF data debugging ---
+    gifDataPresent: !!actualVideoData?.gif_data,
+    gifDataLength: actualVideoData?.gif_data ? actualVideoData.gif_data.length : 0,
+    gifDataPreview: actualVideoData?.gif_data ? actualVideoData.gif_data.substring(0, 50) + '...' : null,
+    gifBytestreamPresent: !!actualVideoData?.gif_bytestream,
+    gifBytestreamLength: actualVideoData?.gif_bytestream ? actualVideoData.gif_bytestream.length : 0,
+    gifBytestreamFirstBytes: actualVideoData?.gif_bytestream ? actualVideoData.gif_bytestream.slice(0, 10) : null,
+    gifUrlPresent: !!actualVideoData?.gif_url,
+    gifFilenamePresent: !!actualVideoData?.gif_filename,
+    // Raw execution result for debugging
+    rawOutput: executionResult?.output ? executionResult.output.substring(0, 200) + '...' : null
   });
 
   // If we have GIF data, use the GifPlayer
@@ -105,6 +116,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
             </h3>
             <GifPlayer 
               gifData={actualVideoData?.gif_data}
+              gifBytestream={actualVideoData?.gif_bytestream}
               gifUrl={actualVideoData?.gif_url}
               gifFilename={actualVideoData?.gif_filename}
               fps={fps}
