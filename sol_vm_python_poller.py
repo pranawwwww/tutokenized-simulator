@@ -204,7 +204,16 @@ class SolVMPythonPoller:
             for line in stdout.split('\n'):
                 if line.startswith('VIDEO_OUTPUT:'):
                     video_json = line[len('VIDEO_OUTPUT:'):].strip()
-                    return json.loads(video_json)
+                    video_data = json.loads(video_json)
+                    
+                    # Log the type of video data found
+                    if video_data.get('type') == 'gif':
+                        print(f"🎬 Found GIF video output with {video_data.get('frame_count', 0)} frames")
+                    elif video_data.get('type') == 'frames' or video_data.get('frames'):
+                        frame_count = video_data.get('frame_count') or len(video_data.get('frames', []))
+                        print(f"🎬 Found frame-based video output with {frame_count} frames")
+                    
+                    return video_data
             return None
         except (json.JSONDecodeError, ValueError) as e:
             print(f"⚠️ Failed to parse video data: {e}")

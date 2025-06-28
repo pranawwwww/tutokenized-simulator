@@ -906,7 +906,23 @@ app.post('/execute', (req, res) => {
             // Combine video data
             const combinedVideoData = {
                 ...videoData,
-                ...(videoOutput && { 
+                ...(videoOutput && videoOutput.type === 'gif' && {
+                    type: 'gif',
+                    gif_data: videoOutput.gif_data,
+                    fps: videoOutput.fps,
+                    resolution: videoOutput.resolution,
+                    frame_count: videoOutput.frame_count
+                }),
+                ...(videoOutput && videoOutput.type === 'frames' && { 
+                    type: 'frames',
+                    frames: videoOutput.frames,
+                    frame_count: videoOutput.frame_count || videoOutput.total_frames,
+                    fps: videoOutput.fps,
+                    resolution: videoOutput.resolution 
+                }),
+                // Legacy support for old format without type
+                ...(videoOutput && !videoOutput.type && videoOutput.frames && { 
+                    type: 'frames',
                     frames: videoOutput.frames,
                     frame_count: videoOutput.frame_count || videoOutput.total_frames,
                     fps: videoOutput.fps,

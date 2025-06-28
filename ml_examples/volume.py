@@ -158,49 +158,95 @@ for frame in range(num_frames):
 
 wp.synchronize()
 
-# ---------- Convert frames to base64 for frontend ----------
+# ---------- Create GIF from frames ----------
 
-def frame_to_base64(frame_array):
-    """Convert numpy frame to base64 JPEG"""
+def create_gif_from_frames(renders, fps=30):
+    """Convert rendered frames to animated GIF"""
     try:
-        # Convert to uint8
-        if frame_array.dtype != np.uint8:
-            frame_uint8 = (frame_array * 255).astype(np.uint8)
-        else:
-            frame_uint8 = frame_array
+        from PIL import Image
         
-        # Try PIL first, fallback to raw bytes
-        try:
-            from PIL import Image
+        # Convert warp frames to PIL Images
+        pil_images = []
+        for render in renders:
+            frame_data = render.numpy()
+            # Convert to uint8
+            if frame_data.dtype != np.uint8:
+                frame_uint8 = (frame_data * 255).astype(np.uint8)
+            else:
+                frame_uint8 = frame_data
+            
+            # Create PIL Image
             img = Image.fromarray(frame_uint8)
-            buffer = io.BytesIO()
-            img.save(buffer, format='JPEG', quality=85)
-            return base64.b64encode(buffer.getvalue()).decode('utf-8')
-        except ImportError:
-            # Fallback to raw bytes if PIL not available
+            pil_images.append(img)
+        
+        # Create GIF in memory
+        gif_buffer = io.BytesIO()
+        if len(pil_images) > 0:
+            # Calculate duration in milliseconds
+            duration = int(1000 / fps)  # Convert fps to milliseconds per frame
+            
+            pil_images[0].save(
+                gif_buffer,
+                format='GIF',
+                save_all=True,
+                append_images=pil_images[1:],
+                duration=duration,
+                loop=0,  # Infinite loop
+                optimize=True
+            )
+            
+            # Get GIF bytes and encode to base64
+            gif_buffer.seek(0)
+            gif_data = gif_buffer.getvalue()
+            return base64.b64encode(gif_data).decode('utf-8')
+    
+    except ImportError:
+        print("PIL not available, creating basic frame sequence...")
+        # Fallback: return first frame as static image
+        if len(renders) > 0:
+            frame_data = renders[0].numpy()
+            frame_uint8 = (frame_data * 255).astype(np.uint8)
             return base64.b64encode(frame_uint8.tobytes()).decode('utf-8')
+    
     except Exception as e:
-        print(f"Frame encoding error: {e}")
+        print(f"GIF creation error: {e}")
         return None
 
-print("Converting frames for web display...")
-video_frames = []
-for i, render in enumerate(renders):
-    frame_data = render.numpy()
-    encoded_frame = frame_to_base64(frame_data)
-    if encoded_frame:
+print("Creating animated GIF from frames...")
+gif_data = create_gif_from_frames(renders, fps)
+
+if gif_data:
+    # Output video data as JSON for backend to capture
+    video_output = {
+        'type': 'gif',
+        'gif_data': gif_data,
+        'fps': fps,
+        'resolution': resolution,
+        'frame_count': len(renders)
+    }
+    
+    print(f"VIDEO_OUTPUT:{json.dumps(video_output)}")
+    print(f"Simulation complete! Generated animated GIF with {len(renders)} frames.")
+else:
+    print("Failed to create GIF, outputting individual frames as fallback...")
+    # Fallback to individual frames
+    video_frames = []
+    for i, render in enumerate(renders):
+        frame_data = render.numpy()
+        frame_uint8 = (frame_data * 255).astype(np.uint8)
+        encoded_frame = base64.b64encode(frame_uint8.tobytes()).decode('utf-8')
         video_frames.append({
             'frame': i,
             'image': encoded_frame
         })
-
-# Output video data as JSON for backend to capture
-video_output = {
-    'frames': video_frames,
-    'fps': fps,
-    'resolution': resolution,
-    'frame_count': len(video_frames)
-}
-
-print(f"VIDEO_OUTPUT:{json.dumps(video_output)}")
-print(f"Simulation complete! Generated {len(video_frames)} frames.")
+    
+    video_output = {
+        'type': 'frames',
+        'frames': video_frames,
+        'fps': fps,
+        'resolution': resolution,
+        'frame_count': len(video_frames)
+    }
+    
+    print(f"VIDEO_OUTPUT:{json.dumps(video_output)}")
+    print(f"Simulation complete! Generated {len(video_frames)} frames.")

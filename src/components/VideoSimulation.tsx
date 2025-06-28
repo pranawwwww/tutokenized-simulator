@@ -8,6 +8,8 @@ import { Play, Pause, RotateCcw, Volume2, Maximize2, Download } from 'lucide-rea
 interface VideoSimulationProps {
   executionResult?: {
     video_data?: {
+      type?: 'gif' | 'frames';
+      gif_data?: string;
       frames?: Array<{
         frame: number;
         image: string;
@@ -37,20 +39,41 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
   }, [executionResult]);
 
   const videoData = executionResult?.video_data;
+  const isGif = videoData?.type === 'gif';
+  const gifData = videoData?.gif_data;
   const frames = videoData?.frames || [];
   const fps = videoData?.fps || 30;
   const frameCount = videoData?.frame_count || frames.length;
 
   // Auto-play when video data is available
   useEffect(() => {
-    if (frames.length > 0) {
+    if (isGif && gifData) {
+      console.log('🎬 GIF data available, ready to display');
+      setIsPlaying(true);
+    } else if (frames.length > 0) {
+      console.log('🎬 Frame data available, ready to play');
       setIsPlaying(true);
     }
-  }, [frames.length]);
+  }, [isGif, gifData, frames.length]);
 
   // Update frame display
   useEffect(() => {
-    if (frames.length > 0 && canvasRef.current) {
+    if (isGif && gifData && canvasRef.current) {
+      // Display GIF
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx?.drawImage(img, 0, 0);
+      };
+      
+      img.src = `data:image/gif;base64,${gifData}`;
+      
+    } else if (!isGif && frames.length > 0 && canvasRef.current) {
+      // Display individual frames
       const frame = frames[Math.min(currentFrame, frames.length - 1)];
       if (frame && frame.image) {
         const canvas = canvasRef.current;
@@ -66,11 +89,11 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
         img.src = `data:image/jpeg;base64,${frame.image}`;
       }
     }
-  }, [currentFrame, frames]);
+  }, [isGif, gifData, currentFrame, frames]);
 
-  // Animation loop
+  // Animation loop (only for frame-based playback, GIFs animate automatically)
   useEffect(() => {
-    if (isPlaying && frames && frames.length > 0) {
+    if (!isGif && isPlaying && frames && frames.length > 0) {
       intervalRef.current = setInterval(() => {
         setCurrentFrame((prev) => {
           const next = prev + 1;
@@ -93,20 +116,33 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
         clearInterval(intervalRef.current);
       }
     };
-  }, [isPlaying, frames, fps]);
+  }, [isGif, isPlaying, frames, fps]);
 
   const togglePlayPause = () => {
-    setIsPlaying(!isPlaying);
+    if (isGif) {
+      // For GIFs, we can't really pause/play, so just toggle the state for UI
+      setIsPlaying(!isPlaying);
+    } else {
+      setIsPlaying(!isPlaying);
+    }
   };
 
   const resetVideo = () => {
-    setCurrentFrame(0);
+    if (!isGif) {
+      setCurrentFrame(0);
+    }
     setIsPlaying(false);
   };
 
   const downloadVideo = () => {
-    // Create a simple download of the last frame or trigger server video download
-    if (frames && frames.length > 0) {
+    if (isGif && gifData) {
+      // Download the GIF
+      const link = document.createElement('a');
+      link.href = `data:image/gif;base64,${gifData}`;
+      link.download = 'warp_simulation.gif';
+      link.click();
+    } else if (frames && frames.length > 0) {
+      // Download the last frame as fallback
       const lastFrame = frames[frames.length - 1];
       const link = document.createElement('a');
       link.href = `data:image/jpeg;base64,${lastFrame.image}`;
@@ -133,7 +169,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
       <div className="glass-card bg-gradient-to-br from-slate-900/90 to-purple-900/90 backdrop-blur-xl border border-white/20 rounded-3xl overflow-hidden hover-lift">
         <div className="aspect-video bg-gradient-to-br from-gray-800 to-gray-900 relative">
           {/* Canvas for WARP video frames */}
-          {frames && frames.length > 0 ? (
+          {(isGif && gifData) || (!isGif && frames && frames.length > 0) ? (
             <canvas
               ref={canvasRef}
               className="absolute inset-0 w-full h-full object-contain"
@@ -157,7 +193,12 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
                 <div className="mt-4 text-xs text-gray-300">
                   <p>Execution Result: {executionResult ? 'Available' : 'None'}</p>
                   <p>Video Data: {videoData ? 'Available' : 'None'}</p>
-                  <p>Frames: {frames.length}</p>
+                  <p>Type: {videoData?.type || 'Unknown'}</p>
+                  {isGif ? (
+                    <p>GIF: {gifData ? 'Available' : 'None'}</p>
+                  ) : (
+                    <p>Frames: {frames.length}</p>
+                  )}
                   {executionResult && (
                     <pre className="mt-2 text-left bg-black/30 p-2 rounded text-xs overflow-auto max-h-32">
                       {JSON.stringify(executionResult, null, 2)}
