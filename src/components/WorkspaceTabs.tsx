@@ -13,6 +13,14 @@ interface WorkspaceTabsProps {
 }
 
 const WorkspaceTabs = ({ activeTab, setActiveTab, executionResult }: WorkspaceTabsProps) => {
+  // Extract streaming data if available
+  const streamingData = executionResult?.streaming_data;
+  const isStreaming = executionResult?.is_streaming || false;
+  
+  console.log('🎯 WorkspaceTabs - executionResult:', executionResult);
+  console.log('🎯 WorkspaceTabs - streamingData:', streamingData);
+  console.log('🎯 WorkspaceTabs - isStreaming:', isStreaming);
+  
   return (
     <div className="glass-card bg-white/70 backdrop-blur-xl border border-white/30 rounded-3xl shadow-2xl overflow-hidden">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
@@ -41,15 +49,23 @@ const WorkspaceTabs = ({ activeTab, setActiveTab, executionResult }: WorkspaceTa
         
         <TabsContent value="benchmarks" className="p-0 h-[550px]">
           <ScrollArea className="h-full p-6">
-            <Benchmarks />
+            <Benchmarks 
+              streamBenchmarks={streamingData?.benchmarks}
+              plotImage={streamingData?.plots?.[0]}
+            />
           </ScrollArea>
         </TabsContent>
-          <TabsContent value="video" className="p-0 h-[550px]">
+        
+        <TabsContent value="video" className="p-0 h-[550px]">
           <ScrollArea className="h-full p-6">
-            <VideoSimulation executionResult={executionResult} />
+            <VideoSimulation 
+              streamData={streamingData}
+              isStreaming={isStreaming}
+            />
           </ScrollArea>
         </TabsContent>
-          <TabsContent value="debug" className="p-0 h-[550px]">
+        
+        <TabsContent value="debug" className="p-0 h-[550px]">
           <ScrollArea className="h-full p-6">
             <Debug executionResult={executionResult} />
           </ScrollArea>

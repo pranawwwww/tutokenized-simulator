@@ -114,7 +114,8 @@ export class ExecutorManager {
           type: this.currentExecutorType,
           timestamp: new Date().toISOString()
         }
-      };    } catch (error: any) {
+      };
+    } catch (error: any) {
       console.error(`❌ ${this.currentExecutorType} executor failed:`, error);
       
       // If hybrid executor fails and we're in auto mode, try local as fallback
@@ -144,6 +145,40 @@ export class ExecutorManager {
         throw new Error(`SOL VM execution failed: ${error.message}. Check if the SOL VM poller is running and the message queue API is accessible.`);
       }
       
+      throw error;
+    }
+  }
+
+  /**
+   * Execute code with streaming support (local executor only for now)
+   */
+  async executeCodeWithStreaming(
+    code: string, 
+    onStreamData: (data: any) => void,
+    timeout: number = 60
+  ) {
+    // Force local executor for streaming
+    if (this.currentExecutorType !== 'local') {
+      console.log('🔄 Switching to local executor for streaming support');
+      this.currentExecutorType = 'local';
+    }
+    
+    try {
+      console.log(`🚀 Executing code with streaming using ${this.currentExecutorType} executor`);
+      const result = await this.localExecutor.executeCodeWithStreaming(code, onStreamData, timeout);
+      
+      // Add executor type to result for debugging
+      return {
+        ...result,
+        executor_type: this.currentExecutorType,
+        executor_info: {
+          type: this.currentExecutorType,
+          streaming: true,
+          timestamp: new Date().toISOString()
+        }
+      };
+    } catch (error: any) {
+      console.error(`❌ ${this.currentExecutorType} streaming executor failed:`, error);
       throw error;
     }
   }

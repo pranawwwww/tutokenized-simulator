@@ -172,16 +172,78 @@ print("\\n💡 Uncomment the examples above to see real GPU acceleration!")`);
     try {
       // Import executorManager dynamically to avoid initialization issues
       const { executorManager } = await import('@/utils/executorManager');
-      const result = await executorManager.executeCode(code);
       
-      console.log('Code execution result:', result);
+      // Check if this is WARP/volume.py code that needs streaming
+      const isWarpCode = code.includes('warp') || code.includes('STREAM_DATA') || 
+                        code.includes('volume.py') || uploadedFileName === 'volume.py';
       
-      if (onExecutionResult) {
-        onExecutionResult({
+      if (isWarpCode) {
+        console.log('🎬 Detected WARP simulation code - using streaming execution');
+        
+        // Collect streaming data
+        const streamingData = {
+          frames: [] as any[],
+          benchmarks: {} as any,
+          plots: [] as string[],
+          status: 'running'
+        };
+        
+        const result = await executorManager.executeCodeWithStreaming(
+          code,
+          (data: any) => {
+            console.log('📡 Received stream data:', data);
+            
+            // Handle different types of streaming data
+            if (data.type === 'frame_data' && data.image && data.metrics) {
+              streamingData.frames.push({
+                frame: data.frame,
+                image: data.image,
+                metrics: data.metrics
+              });
+              console.log(`🎬 Added frame ${data.frame}, total frames: ${streamingData.frames.length}`);
+            } else if (data.type === 'benchmark_data') {
+              streamingData.benchmarks = data.benchmarks || data;
+              console.log('📊 Updated benchmark data:', streamingData.benchmarks);
+            } else if (data.type === 'benchmark_plot' && data.image) {
+              streamingData.plots.push(data.image);
+              console.log('📈 Added plot image');
+            } else if (data.type === 'simulation_complete') {
+              streamingData.status = 'complete';
+              console.log('✅ Simulation marked as complete');
+            }
+          },
+          120 // 2 minute timeout for WARP simulations
+        );
+        
+        // Add streaming data to result
+        const enhancedResult = {
           ...result,
           timestamp: new Date().toISOString(),
-          code: code
-        });
+          code: code,
+          streaming_data: streamingData,
+          is_streaming: true
+        };
+        
+        console.log('✅ WARP streaming execution completed:', enhancedResult);
+        console.log(`📊 Final streaming data - Frames: ${streamingData.frames.length}, Benchmarks:`, streamingData.benchmarks);
+        
+        if (onExecutionResult) {
+          onExecutionResult(enhancedResult);
+        }
+        
+      } else {
+        // Standard execution for non-WARP code
+        const result = await executorManager.executeCode(code);
+        
+        console.log('Code execution result:', result);
+        
+        if (onExecutionResult) {
+          onExecutionResult({
+            ...result,
+            timestamp: new Date().toISOString(),
+            code: code
+          });
+        }
       }
       
     } catch (error: any) {
