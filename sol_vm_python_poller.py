@@ -491,21 +491,62 @@ class SolVMPythonPoller:
         }
     
     def _parse_video_output(self, output: str) -> Dict[str, Any]:
-        """Parse VIDEO_OUTPUT from Python stdout"""
-        try:
-            if 'VIDEO_OUTPUT:' in output:
-                # Find the VIDEO_OUTPUT line
-                lines = output.split('\n')
-                for line in lines:
-                    if line.strip().startswith('VIDEO_OUTPUT:'):
-                        video_json = line.split('VIDEO_OUTPUT:', 1)[1].strip()
-                        video_data = json.loads(video_json)
-                        print(f"🎬 Parsed video data: {video_data.get('frame_count', 0)} frames")
-                        return video_data
-        except Exception as e:
-            print(f"Failed to parse VIDEO_OUTPUT: {e}")
+        """Parse VIDEO_OUTPUT and GIF_OUTPUT from Python stdout"""
+        video_data = {}
         
-        return {}
+        try:
+            lines = output.split('\n')
+            for line in lines:
+                line = line.strip()
+                
+                # Parse VIDEO_OUTPUT
+                if line.startswith('VIDEO_OUTPUT:'):
+                    video_json = line.split('VIDEO_OUTPUT:', 1)[1].strip()
+                    parsed_data = json.loads(video_json)
+                    video_data.update(parsed_data)
+                    print(f"🎬 Parsed video data: {parsed_data.get('frame_count', 0)} frames")
+                
+                # Parse GIF_OUTPUT
+                elif line.startswith('GIF_OUTPUT:'):
+                    gif_json = line.split('GIF_OUTPUT:', 1)[1].strip()
+                    parsed_data = json.loads(gif_json)
+                    
+                    # Handle file-based GIF output for remote execution
+                    if 'gif_file' in parsed_data:
+                        gif_filename = parsed_data['gif_filename']
+                        gif_filepath = parsed_data['gif_file']
+                        
+                        # For remote execution, convert the file to base64
+                        # since the frontend can't access the remote file system
+                        try:
+                            import base64
+                            with open(gif_filepath, 'rb') as f:
+                                gif_bytes = f.read()
+                                gif_base64 = base64.b64encode(gif_bytes).decode('utf-8')
+                                
+                            # Replace file info with base64 data for remote execution
+                            parsed_data['gif_data'] = gif_base64
+                            parsed_data['gif_url'] = f"data:image/gif;base64,{gif_base64}"
+                            
+                            # Clean up the file
+                            try:
+                                os.unlink(gif_filepath)
+                            except OSError:
+                                pass
+                            
+                            print(f"�️ Parsed GIF data: {parsed_data.get('frame_count', 0)} frames, converted to base64 ({len(gif_base64)} chars)")
+                            
+                        except Exception as file_error:
+                            print(f"Failed to read GIF file {gif_filepath}: {file_error}")
+                            # Keep the original file path info as fallback
+                            print(f"🎞️ Parsed GIF data: {parsed_data.get('frame_count', 0)} frames, file: {gif_filename}")
+                    
+                    video_data.update(parsed_data)
+                    
+        except Exception as e:
+            print(f"Failed to parse video/GIF output: {e}")
+        
+        return video_data
 
 def main():
     """Main entry point"""

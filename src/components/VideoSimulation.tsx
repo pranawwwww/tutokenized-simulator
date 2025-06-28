@@ -44,22 +44,40 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
       hasVideoData: !!executionResult?.video_data,
       videoDataType: executionResult?.video_data?.type,
       frameCount: executionResult?.video_data?.frames?.length,
-      outputLength: executionResult?.output?.length
+      outputLength: executionResult?.output?.length,
+      fullExecutionResult: executionResult
     });
   }, [executionResult]);
 
-  // Check if we have video frame data or GIF data
-  const hasVideoFrames = executionResult?.video_data?.type === 'video_frames' && 
-                        executionResult?.video_data?.frames && 
-                        executionResult.video_data.frames.length > 0;
-
-  const hasGifData = executionResult?.video_data?.type === 'gif_animation' && 
-                    (executionResult?.video_data?.gif_url || executionResult?.video_data?.gif_filename);
-
   const videoData = executionResult?.video_data;
-  const frames = videoData?.frames || [];
-  const fps = videoData?.fps || 30;
-  const resolution = videoData?.resolution || [512, 384];
+  
+  // Fallback: try to parse GIF_OUTPUT from raw output if video_data is missing
+  let fallbackVideoData = null;
+  if (!videoData && executionResult?.output) {
+    try {
+      const gifOutputMatch = executionResult.output.match(/GIF_OUTPUT:(.+)/);
+      if (gifOutputMatch) {
+        fallbackVideoData = JSON.parse(gifOutputMatch[1]);
+        console.log('🔄 Found GIF_OUTPUT in raw output:', fallbackVideoData);
+      }
+    } catch (e) {
+      console.warn('Failed to parse GIF_OUTPUT from raw output:', e);
+    }
+  }
+  
+  const actualVideoData = videoData || fallbackVideoData;
+  
+  // Check if we have video frame data or GIF data
+  const hasVideoFrames = actualVideoData?.type === 'video_frames' && 
+                        actualVideoData?.frames && 
+                        actualVideoData.frames.length > 0;
+
+  const hasGifData = actualVideoData?.type === 'gif_animation' && 
+                    (actualVideoData?.gif_url || actualVideoData?.gif_filename);
+  
+  const frames = actualVideoData?.frames || [];
+  const fps = actualVideoData?.fps || 30;
+  const resolution = actualVideoData?.resolution || [512, 384];
 
   console.log('🎬 VideoSimulation render:', {
     hasVideoFrames,
@@ -68,9 +86,10 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
     fps,
     resolution,
     executionSuccess: executionResult?.success,
-    videoDataType: videoData?.type,
-    videoDataKeys: videoData ? Object.keys(videoData) : [],
-    fullVideoData: videoData
+    videoDataType: actualVideoData?.type,
+    videoDataKeys: actualVideoData ? Object.keys(actualVideoData) : [],
+    fullVideoData: actualVideoData,
+    fallbackVideoData
   });
 
   // If we have GIF data, use the GifPlayer
@@ -82,17 +101,17 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
             <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-3">
               🎞️ WARP Volume Animation
               <Badge className="bg-green-100 text-green-800 border-green-300">
-                GIF • {videoData?.frame_count} frames
+                GIF • {actualVideoData?.frame_count} frames
               </Badge>
             </h3>
             <GifPlayer 
-              gifUrl={videoData?.gif_url}
-              gifFilename={videoData?.gif_filename}
+              gifUrl={actualVideoData?.gif_url}
+              gifFilename={actualVideoData?.gif_filename}
               fps={fps}
               resolution={resolution}
-              frameCount={videoData?.frame_count}
-              duration={videoData?.duration}
-              fileSizeBytes={videoData?.file_size_bytes}
+              frameCount={actualVideoData?.frame_count}
+              duration={actualVideoData?.duration}
+              fileSizeBytes={actualVideoData?.file_size_bytes}
             />
           </div>
         </div>
@@ -114,11 +133,11 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Frames:</span>
-                <span className="font-mono text-blue-700">{videoData?.frame_count}</span>
+                <span className="font-mono text-blue-700">{actualVideoData?.frame_count}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Duration:</span>
-                <span className="font-mono text-blue-700">{videoData?.duration?.toFixed(2)}s</span>
+                <span className="font-mono text-blue-700">{actualVideoData?.duration?.toFixed(2)}s</span>
               </div>
             </div>
           </div>
@@ -156,7 +175,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
               <div className="flex justify-between">
                 <span className="text-gray-600">File Size:</span>
                 <span className="font-mono text-green-700">
-                  {videoData?.file_size_bytes ? `${(videoData.file_size_bytes / 1024).toFixed(1)} KB` : 'N/A'}
+                  {actualVideoData?.file_size_bytes ? `${(actualVideoData.file_size_bytes / 1024).toFixed(1)} KB` : 'N/A'}
                 </span>
               </div>
               <div className="flex justify-between">
