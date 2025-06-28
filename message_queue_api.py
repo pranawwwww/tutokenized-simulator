@@ -458,10 +458,10 @@ def get_result(task_id):
     result = db.get_result(task_id)
     
     if result:
-        # --- GIF base64 injection logic ---
+        # --- GIF bytestream injection logic ---
         # Try to parse GIF_OUTPUT from result['output']
         output = result.get('output', '')
-        gif_data = None
+        gif_bytes = None
         gif_filename = None
         import re, json as _json
         match = re.search(r'GIF_OUTPUT:(\{.*?\})(?:\n|$)', output)
@@ -471,8 +471,10 @@ def get_result(task_id):
                 gif_filename = gif_info.get('gif_filename') or gif_info.get('gif_file')
                 if gif_filename and os.path.exists(gif_filename):
                     with open(gif_filename, 'rb') as f:
-                        gif_data = base64.b64encode(f.read()).decode('utf-8')
-                    gif_info['gif_data'] = gif_data
+                        gif_bytes = f.read()
+                    # Send as base64 for transport, but also include raw bytes for direct use
+                    gif_info['gif_data'] = base64.b64encode(gif_bytes).decode('utf-8')
+                    gif_info['gif_bytestream'] = list(gif_bytes)  # send as list of ints for JS Uint8Array
                     result['video_data'] = gif_info
                 elif gif_info.get('gif_data'):
                     # Already present

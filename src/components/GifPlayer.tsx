@@ -6,6 +6,7 @@ import { Download, RefreshCw, Maximize2, Play } from 'lucide-react';
 
 interface GifPlayerProps {
   gifData?: string; // base64-encoded GIF data
+  gifBytestream?: number[]; // raw GIF bytestream as array of ints
   gifUrl?: string;
   gifFilename?: string;
   fps?: number;
@@ -17,6 +18,7 @@ interface GifPlayerProps {
 
 const GifPlayer: React.FC<GifPlayerProps> = ({ 
   gifData,
+  gifBytestream,
   gifUrl,
   gifFilename, 
   fps = 10, 
@@ -27,30 +29,37 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Prefer gifData (base64) if present, else gifUrl, else filename
+  // Prefer gifBytestream if present, then gifData (base64), else gifUrl, else filename
+  const getGifBlobUrl = () => {
+    if (gifBytestream && gifBytestream.length > 0) {
+      try {
+        const byteArray = new Uint8Array(gifBytestream);
+        const blob = new Blob([byteArray], { type: 'image/gif' });
+        return URL.createObjectURL(blob);
+      } catch (e) {
+        return null;
+      }
+    } else if (gifData) {
+      try {
+        const byteCharacters = atob(gifData);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'image/gif' });
+        return URL.createObjectURL(blob);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const gifBlobUrl = getGifBlobUrl();
   const actualGifUrl = gifData
     ? `data:image/gif;base64,${gifData}`
     : gifUrl || (gifFilename ? `http://localhost:3001/gifs/${gifFilename}` : null);
-
-  // --- New: Play GIF as video using HTML5 video if possible ---
-  // This method creates a Blob from the base64 GIF and plays it as a video
-  const getGifVideoUrl = () => {
-    if (!gifData) return null;
-    try {
-      const byteCharacters = atob(gifData);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'image/gif' });
-      return URL.createObjectURL(blob);
-    } catch (e) {
-      return null;
-    }
-  };
-
-  const gifVideoUrl = getGifVideoUrl();
 
   console.log('🎞️ GifPlayer props:', { gifData, gifUrl, gifFilename, actualGifUrl, frameCount, fps });
 
@@ -130,10 +139,10 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
         </CardHeader>
         <CardContent className="p-0">
           <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-b-lg overflow-hidden">
-            {/* --- Prefer video tag if gifVideoUrl is available --- */}
-            {gifVideoUrl ? (
+            {/* --- Prefer video tag if gifBlobUrl is available --- */}
+            {gifBlobUrl ? (
               <video
-                src={gifVideoUrl}
+                src={gifBlobUrl}
                 autoPlay
                 loop
                 controls
