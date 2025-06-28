@@ -115,7 +115,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
     return null;
   };
 
-  const metrics = getCurrentMetrics();
+  const metrics = null; // Disable metrics for now
   return (
     <div className="space-y-6">
       {/* Video Player Section */}

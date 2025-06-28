@@ -850,8 +850,8 @@ app.post('/execute', (req, res) => {
         console.log(`⚡ Running command: ${command}`);
         
         exec(command, { 
-            timeout: 30000, // 30 seconds
-            maxBuffer: 1024 * 1024, // 1MB buffer
+            timeout: 120000, // 2 minutes for complex simulations
+            maxBuffer: 10 * 1024 * 1024, // 10MB buffer for video data
             cwd: __dirname,
             env: { 
                 ...process.env, 
@@ -863,7 +863,25 @@ app.post('/execute', (req, res) => {
             const executionTime = (endTime - startTime) / 1000;
             
             console.log(`⏱️ Execution completed in ${executionTime.toFixed(2)}s`);
-              // Get system metrics
+            
+            // Enhanced error logging
+            if (error) {
+                console.error('❌ Execution Error Details:');
+                console.error('  Error Code:', error.code);
+                console.error('  Error Signal:', error.signal);
+                console.error('  Error Message:', error.message);
+                console.error('  Command:', error.cmd || command);
+                if (stderr) {
+                    console.error('  STDERR Output:');
+                    console.error('  ' + stderr.split('\n').join('\n  '));
+                }
+                if (stdout) {
+                    console.error('  STDOUT Output:');
+                    console.error('  ' + stdout.split('\n').join('\n  '));
+                }
+            }
+            
+            // Get system metrics
             console.log('📊 Collecting system metrics...');
             const systemMetrics = await getSystemMetrics();
             
@@ -890,7 +908,7 @@ app.post('/execute', (req, res) => {
                 ...videoData,
                 ...(videoOutput && { 
                     frames: videoOutput.frames,
-                    frame_count: videoOutput.total_frames,
+                    frame_count: videoOutput.frame_count || videoOutput.total_frames,
                     fps: videoOutput.fps,
                     resolution: videoOutput.resolution 
                 })
@@ -902,11 +920,22 @@ app.post('/execute', (req, res) => {
                 console.log('🏃 Running performance benchmarks...');
                 benchmarks = await runBenchmarks();
             }
-              const result = {
+            
+            // Create detailed error message
+            let detailedError = '';
+            if (error) {
+                detailedError = `Execution failed: ${error.message}`;
+                if (error.code) detailedError += `\nError code: ${error.code}`;
+                if (error.signal) detailedError += `\nSignal: ${error.signal}`;
+                if (stderr) detailedError += `\nSTDERR:\n${stderr}`;
+                if (stdout) detailedError += `\nSTDOUT:\n${stdout}`;
+            }
+            
+            const result = {
                 id: executionId,
                 success: !error,
                 output: stdout || '',
-                error: error ? `${error.message}${stderr ? '\n' + stderr : ''}` : (stderr || ''),
+                error: error ? detailedError : (stderr || ''),
                 execution_time: executionTime,
                 timestamp: new Date().toISOString(),
                 code: code,
@@ -914,7 +943,14 @@ app.post('/execute', (req, res) => {
                 benchmarks: benchmarks,
                 video_data: combinedVideoData,
                 binary_outputs: {},
-                file_outputs: {}
+                file_outputs: {},
+                debug: {
+                    command: command,
+                    tempFile: tempFile,
+                    hasVideoOutput: !!videoOutput,
+                    videoFrameCount: videoOutput?.frames?.length || 0,
+                    pythonCommand: PYTHON_COMMAND
+                }
             };
             
             // Log the result

@@ -122,7 +122,6 @@ image = wp.empty(shape=(resolution[1], resolution[0], 3), dtype=float)
 # ---------- Frame Rendering Loop ----------
 
 renders = []
-print("Starting WARP volume simulation...")
 
 for frame in range(num_frames):
     wp.launch(
@@ -153,55 +152,40 @@ for frame in range(num_frames):
 
     renderer.get_pixels(image, split_up_tiles=False, mode="rgb")
     renders.append(wp.clone(image, device="cpu", pinned=True))
-    
-    # Progress update
-    if frame % 20 == 0 or frame == num_frames - 1:
-        progress = (frame + 1) / num_frames * 100
-        print(f"Frame {frame+1:3d}/{num_frames} ({progress:5.1f}%) completed")
 
 wp.synchronize()
 
-# Convert frames to base64 for web display
-def encode_frame_as_base64(frame_array):
-    """Convert numpy image array to base64 string"""
+# Convert frames to base64 for frontend
+def frame_to_base64(frame_array):
     try:
-        from PIL import Image
-        import io
-        
-        # Convert from float [0,1] to uint8 [0,255]
-        if frame_array.dtype == np.float32 or frame_array.dtype == np.float64:
+        # Convert to uint8 if needed
+        if frame_array.dtype != np.uint8:
             frame_uint8 = (frame_array * 255).astype(np.uint8)
         else:
             frame_uint8 = frame_array
         
-        # Create PIL Image
-        img = Image.fromarray(frame_uint8)
-        
-        # Save to bytes buffer as JPEG
-        buffer = io.BytesIO()
-        img.save(buffer, format='JPEG', quality=90)
-        buffer.seek(0)
-        
-        # Encode to base64
-        encoded = base64.b64encode(buffer.getvalue()).decode('utf-8')
-        return encoded
+        # Try PIL first
+        try:
+            from PIL import Image
+            img = Image.fromarray(frame_uint8)
+            buffer = io.BytesIO()
+            img.save(buffer, format='JPEG', quality=90)
+            return base64.b64encode(buffer.getvalue()).decode('utf-8')
+        except ImportError:
+            # Fallback to raw bytes
+            return base64.b64encode(frame_uint8.tobytes()).decode('utf-8')
     except Exception as e:
-        print(f"Error encoding frame: {e}")
+        print(f"Frame encoding error: {e}")
         return None
 
-# Output video data for frontend
-print("\nConverting frames for web display...")
+# Output video frames as JSON
 video_frames = []
 for i, render in enumerate(renders):
     frame_data = render.numpy()
-    encoded_frame = encode_frame_as_base64(frame_data)
+    encoded_frame = frame_to_base64(frame_data)
     if encoded_frame:
-        video_frames.append({
-            'frame': i,
-            'image': encoded_frame
-        })
+        video_frames.append({'frame': i, 'image': encoded_frame})
 
-# Output the video data as JSON for the backend to capture
 video_output = {
     'frames': video_frames,
     'fps': fps,
