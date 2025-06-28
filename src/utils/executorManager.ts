@@ -29,6 +29,14 @@ export const DEFAULT_EXECUTOR_CONFIG: ExecutorConfig = {
   }
 };
 
+// Debug log the configuration
+console.log('🔧 Executor configuration loaded:', {
+  type: DEFAULT_EXECUTOR_CONFIG.type,
+  env_executor_type: import.meta.env.VITE_EXECUTOR_TYPE,
+  env_task_queue: import.meta.env.VITE_TASK_QUEUE_URL,
+  env_api_key: import.meta.env.VITE_API_KEY ? 'SET' : 'NOT_SET'
+});
+
 export class ExecutorManager {
   private localExecutor: LocalPythonExecutor;
   private hybridExecutor: HybridSolVMExecutor | null = null;
@@ -37,9 +45,15 @@ export class ExecutorManager {
   constructor(config: ExecutorConfig = DEFAULT_EXECUTOR_CONFIG) {
     this.config = config;
     this.currentExecutorType = config.type; // Set to config type instead of defaulting to 'local'
+    console.log(`🏗️ ExecutorManager initialized with type: ${this.currentExecutorType}`);
     this.localExecutor = new LocalPythonExecutor();
     
     if (config.hybridConfig) {
+      console.log('🔗 Initializing hybrid executor with config:', {
+        taskQueueUrl: config.hybridConfig.taskQueueUrl,
+        resultQueueUrl: config.hybridConfig.resultQueueUrl,
+        hasApiKey: !!config.hybridConfig.apiKey
+      });
       this.hybridExecutor = new HybridSolVMExecutor({
         taskQueueUrl: config.hybridConfig.taskQueueUrl,
         resultQueueUrl: config.hybridConfig.resultQueueUrl,

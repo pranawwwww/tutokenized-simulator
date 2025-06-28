@@ -173,12 +173,11 @@ print("\\n💡 Uncomment the examples above to see real GPU acceleration!")`);
       // Import executorManager dynamically to avoid initialization issues
       const { executorManager } = await import('@/utils/executorManager');
       
-      // Check if this is WARP/volume.py code that needs streaming
-      const isWarpCode = code.includes('warp') || code.includes('STREAM_DATA') || 
-                        code.includes('volume.py') || uploadedFileName === 'volume.py';
+      // Check if this is old WARP code that needs streaming (not volume.py)
+      const needsStreaming = code.includes('STREAM_DATA') && !code.includes('VIDEO_OUTPUT');
       
-      if (isWarpCode) {
-        console.log('🎬 Detected WARP simulation code - using streaming execution');
+      if (needsStreaming) {
+        console.log('🎬 Detected WARP simulation code with streaming - using streaming execution');
         
         // Collect streaming data
         const streamingData = {
@@ -232,7 +231,8 @@ print("\\n💡 Uncomment the examples above to see real GPU acceleration!")`);
         }
         
       } else {
-        // Standard execution for non-WARP code
+        // Standard execution for volume.py and other code (uses configured executor)
+        console.log('🚀 Using standard execution with configured executor');
         const result = await executorManager.executeCode(code);
         
         console.log('Code execution result:', result);
