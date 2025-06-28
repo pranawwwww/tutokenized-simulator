@@ -13,12 +13,11 @@ const Index = () => {
   
   const [activeTab, setActiveTab] = useState('benchmarks');
   const [executionResult, setExecutionResult] = useState<any>(null);
-
   const handleExecutionResult = (result: any) => {
     console.log('Handling execution result:', result);
     setExecutionResult(result);
-    // Automatically switch to debug tab when code is executed
-    setActiveTab('debug');
+    // Automatically switch to video tab when code is executed
+    setActiveTab('video');
   };
 
   console.log('Index page about to render JSX...');

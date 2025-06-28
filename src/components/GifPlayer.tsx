@@ -14,6 +14,7 @@ interface GifPlayerProps {
   frameCount?: number;
   duration?: number;
   fileSizeBytes?: number;
+  standalone?: boolean; // Whether to render as standalone component with own card wrapper
 }
 
 const GifPlayer: React.FC<GifPlayerProps> = ({ 
@@ -25,7 +26,8 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
   resolution = [400, 300], 
   frameCount = 0,
   duration = 0,
-  fileSizeBytes = 0
+  fileSizeBytes = 0,
+  standalone = true
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   // Prefer gifBytestream if present, then gifData (base64), else gifUrl, else filename
@@ -70,13 +72,22 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
     console.log('⚠️ No valid GIF data found for blob creation');
     return null;
   };
-
   const gifBlobUrl = getGifBlobUrl();
-  const actualGifUrl = gifData
+  const actualGifUrl = gifBlobUrl || (gifData
     ? `data:image/gif;base64,${gifData}`
-    : gifUrl || (gifFilename ? `http://localhost:3001/gifs/${gifFilename}` : null);
+    : gifUrl || (gifFilename ? `http://localhost:3001/gifs/${gifFilename}` : null));
 
-  console.log('🎞️ GifPlayer props:', { gifData, gifUrl, gifFilename, actualGifUrl, frameCount, fps });
+  console.log('🎞️ GifPlayer props:', { 
+    gifData: !!gifData, 
+    gifDataLength: gifData?.length,
+    gifBytestream: !!gifBytestream,
+    gifBytestreamLength: gifBytestream?.length,
+    gifUrl, 
+    gifFilename, 
+    actualGifUrl: actualGifUrl?.substring(0, 50) + '...', 
+    frameCount, 
+    fps 
+  });
   // --- Enhanced debugging for gif data reception ---
   console.log('🔍 GifPlayer Debug (Enhanced):', {
     hasGifData: !!gifData,
@@ -147,30 +158,130 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
-  };
+  };  // Render simple GIF content without card wrapper when not standalone
+  if (!standalone) {
+    if (!actualGifUrl) {
+      return (
+        <div className="w-full h-96 bg-gradient-to-br from-blue-900/50 to-purple-900/50 flex items-center justify-center rounded-lg border-2 border-gray-600">
+          <div className="text-center text-white">
+            <div className="w-24 h-24 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <Play className="w-12 h-12 ml-1" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">No GIF Generated</h3>
+            <p className="text-blue-200">Run the simulation to generate an animated GIF</p>
+          </div>
+        </div>
+      );
+    }
 
-  if (!actualGifUrl) {
     return (
-      <Card className="bg-gradient-to-br from-slate-900/90 to-purple-900/90 backdrop-blur-xl border border-white/20">
-        <CardContent className="p-8">
-          <div className="aspect-video bg-gradient-to-br from-blue-900/50 to-purple-900/50 flex items-center justify-center rounded-lg">
-            <div className="text-center text-white">
-              <div className="w-24 h-24 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
-                <Play className="w-12 h-12 ml-1" />
+      <div className="space-y-4">
+        {/* Control buttons */}
+        <div className="flex justify-between items-center">
+          <div className="flex gap-2">
+            <Button
+              onClick={downloadGif}
+              variant="outline"
+              size="sm"
+              className="text-white border-white/30 hover:bg-white/10"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download GIF
+            </Button>
+            <Button
+              onClick={toggleFullscreen}
+              variant="outline"
+              size="sm"
+              className="text-white border-white/30 hover:bg-white/10"
+            >
+              <Maximize2 className="w-4 h-4" />
+              {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+            </Button>
+          </div>
+        </div>        {/* GIF display with fixed dimensions and scroll */}
+        <div className={`relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border-2 border-gray-600 overflow-auto ${isFullscreen ? 'fixed inset-4 z-50 h-[calc(100vh-100px)] w-[calc(100vw-32px)]' : 'w-full h-96'}`}>
+          <img
+            src={actualGifUrl}
+            alt="WARP Volume Animation"
+            className="rounded shadow-lg"
+            style={{ 
+              imageRendering: 'crisp-edges',
+              maxWidth: 'none',
+              maxHeight: 'none',
+              height: 'auto',
+              width: 'auto',
+              display: 'block',
+              margin: '16px'
+            }}
+            onError={(e) => {
+              console.error('❌ GIF failed to load:', e);
+              console.error('GIF URL details:', actualGifUrl);
+            }}
+            onLoad={() => {
+              console.log('✅ GIF successfully loaded');
+            }}          />
+          {/* Debug overlay */}
+          <div className="absolute top-2 left-2 bg-black/80 text-white text-xs p-3 rounded-lg opacity-75 hover:opacity-100 transition-opacity max-w-sm w-auto backdrop-blur-sm border border-gray-600 z-10">
+            <div className="space-y-1">
+              <div className="break-words">
+                <span className="text-gray-300">URL:</span> 
+                <span className="ml-1 font-mono text-green-300 break-all">
+                  {actualGifUrl?.substring(0, 40)}...
+                </span>
               </div>
-              <h3 className="text-xl font-semibold mb-2">No GIF Generated</h3>
-              <p className="text-blue-200">Run the simulation to generate an animated GIF</p>
+              <div className="break-words">
+                <span className="text-gray-300">Data:</span> 
+                <span className="ml-1 font-mono text-blue-300">
+                  {gifBytestream ? `${gifBytestream.length} bytes` : gifData ? `${gifData.length} chars` : 'No data'}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-300">Resolution:</span> 
+                <span className="ml-1 font-mono text-yellow-300">{resolution[0]}×{resolution[1]}</span>
+              </div>
+              <div className="text-gray-400 text-[10px] mt-2 italic">Scroll to navigate if needed</div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
-
+  // Standalone mode (original card layout)
+  if (!actualGifUrl) {
+    if (standalone) {
+      return (
+        <Card className="bg-gradient-to-br from-slate-900/90 to-purple-900/90 backdrop-blur-xl border border-white/20">
+          <CardContent className="p-8">
+            <div className="w-full h-96 bg-gradient-to-br from-blue-900/50 to-purple-900/50 flex items-center justify-center rounded-lg border-2 border-gray-600">
+              <div className="text-center text-white">
+                <div className="w-24 h-24 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
+                  <Play className="w-12 h-12 ml-1" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">No GIF Generated</h3>
+                <p className="text-blue-200">Run the simulation to generate an animated GIF</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    } else {
+      return (
+        <div className="w-full h-96 bg-gradient-to-br from-blue-900/50 to-purple-900/50 flex items-center justify-center rounded-lg border-2 border-gray-600">
+          <div className="text-center text-white">
+            <div className="w-24 h-24 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <Play className="w-12 h-12 ml-1" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">No GIF Generated</h3>
+            <p className="text-blue-200">Run the simulation to generate an animated GIF</p>
+          </div>
+        </div>
+      );
+    }
+  }
   return (
     <div className="space-y-4">
       {/* GIF Player */}
-      <Card className="bg-gradient-to-br from-slate-900/90 to-purple-900/90 backdrop-blur-xl border border-white/20">
+      <Card className={`bg-gradient-to-br from-slate-900/90 to-purple-900/90 backdrop-blur-xl border border-white/20 ${isFullscreen ? 'fixed inset-4 z-50' : ''}`}>
         <CardHeader className="pb-2">
           <div className="flex justify-between items-center">
             <CardTitle className="text-white flex items-center gap-2">
@@ -196,61 +307,50 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
                 className="text-white border-white/30 hover:bg-white/10"
               >
                 <Maximize2 className="w-4 h-4" />
+                {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
               </Button>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-b-lg overflow-hidden">            {/* --- Enhanced GIF display with multiple fallbacks --- */}
+          </div>        </CardHeader>        <CardContent className="p-4">          <div className={`relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border-2 border-gray-600 overflow-auto ${isFullscreen ? 'h-[calc(100vh-200px)] w-full' : 'w-full h-96'}`}>
+            {/* --- Enhanced GIF display with scroll functionality --- */}
             {gifBlobUrl ? (
-              <div className="relative">
-                <video
-                  src={gifBlobUrl}
-                  autoPlay
-                  loop
-                  muted
-                  controls
-                  className="max-w-full max-h-full object-contain rounded"
-                  style={{ aspectRatio: `${resolution[0]}/${resolution[1]}` }}
-                  onError={(e) => {
-                    console.error('❌ Video tag failed to load GIF blob:', e);
-                  }}
-                  onLoadStart={() => {
-                    console.log('🎬 Video tag started loading GIF blob');
-                  }}
-                  onLoadedData={() => {
-                    console.log('✅ Video tag successfully loaded GIF blob');
-                  }}
-                >
-                  {/* Fallback to img tag if video fails */}
-                  <img
-                    src={gifBlobUrl}
-                    alt="WARP Volume Animation"
-                    className="max-w-full max-h-full object-contain rounded"
-                    style={{ imageRendering: 'crisp-edges', aspectRatio: `${resolution[0]}/${resolution[1]}` }}
-                    onError={(e) => {
-                      console.error('❌ Img tag also failed to load GIF blob:', e);
-                    }}
-                    onLoad={() => {
-                      console.log('✅ Img tag successfully loaded GIF blob');
-                    }}
-                  />
-                  Your browser does not support the video tag or the GIF format.
-                </video>
-                {/* Debug overlay */}
-                <div className="absolute top-2 left-2 bg-black/70 text-white text-xs p-2 rounded opacity-50 hover:opacity-100 transition-opacity">
-                  Blob URL: {gifBlobUrl.substring(0, 30)}...
-                </div>
-              </div>
+              <img
+                src={gifBlobUrl}
+                alt="WARP Volume Animation"
+                className="rounded shadow-lg"
+                style={{ 
+                  imageRendering: 'crisp-edges',
+                  maxWidth: 'none',
+                  maxHeight: 'none',
+                  height: 'auto',
+                  width: 'auto',
+                  display: 'block',
+                  margin: '16px'
+                }}
+                onError={(e) => {
+                  console.error('❌ Img tag failed to load GIF blob:', e);
+                  console.error('Blob URL details:', gifBlobUrl);
+                }}
+                onLoad={() => {
+                  console.log('✅ Img tag successfully loaded GIF blob');
+                }}
+              />
             ) : actualGifUrl ? (
               <img
                 src={actualGifUrl}
                 alt="WARP Volume Animation"
-                className="max-w-full max-h-full object-contain rounded"
-                style={{ imageRendering: 'crisp-edges', aspectRatio: `${resolution[0]}/${resolution[1]}` }}
+                className="rounded shadow-lg"
+                style={{ 
+                  imageRendering: 'crisp-edges',
+                  maxWidth: 'none',
+                  maxHeight: 'none',
+                  height: 'auto',
+                  width: 'auto',
+                  display: 'block',
+                  margin: '16px'
+                }}
               />
             ) : (
-              <div className="aspect-video bg-gradient-to-br from-blue-900/50 to-purple-900/50 flex items-center justify-center rounded-lg">
+              <div className="w-full h-full bg-gradient-to-br from-blue-900/50 to-purple-900/50 flex items-center justify-center rounded-lg min-h-[350px]">
                 <div className="text-center text-white">
                   <div className="w-24 h-24 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
                     <Play className="w-12 h-12 ml-1" />
@@ -260,16 +360,28 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
                 </div>
               </div>
             )}
-            {isFullscreen && (
-              <Button
-                onClick={() => setIsFullscreen(false)}
-                variant="outline"
-                size="sm"
-                className="absolute top-4 right-4 text-white border-white/30 hover:bg-white/10 z-10"
-              >
-                Exit Fullscreen
-              </Button>
-            )}
+              {/* Debug overlay with scroll info */}
+            <div className="absolute top-2 left-2 bg-black/80 text-white text-xs p-3 rounded-lg opacity-75 hover:opacity-100 transition-opacity max-w-sm w-auto backdrop-blur-sm border border-gray-600 z-10">
+              <div className="space-y-1">
+                <div className="break-words">
+                  <span className="text-gray-300">URL:</span> 
+                  <span className="ml-1 font-mono text-green-300 break-all">
+                    {actualGifUrl?.substring(0, 40)}...
+                  </span>
+                </div>
+                <div className="break-words">
+                  <span className="text-gray-300">Data:</span> 
+                  <span className="ml-1 font-mono text-blue-300">
+                    {gifBytestream ? `${gifBytestream.length} bytes` : gifData ? `${gifData.length} chars` : 'No data'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-300">Resolution:</span> 
+                  <span className="ml-1 font-mono text-yellow-300">{resolution[0]}×{resolution[1]}</span>
+                </div>
+                <div className="text-gray-400 text-[10px] mt-2 italic">Scroll to navigate if needed</div>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

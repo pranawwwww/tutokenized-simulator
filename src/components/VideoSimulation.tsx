@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, RotateCcw, Volume2, Maximize2 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Volume2, Maximize2, ZoomIn, ZoomOut, Download } from 'lucide-react';
 import SimpleVideoPlayer from './SimpleVideoPlayer';
-import GifPlayer from './GifPlayer';
 
 interface VideoSimulationProps {
   executionResult?: {
@@ -100,37 +99,137 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
     gifFilenamePresent: !!actualVideoData?.gif_filename,
     // Raw execution result for debugging
     rawOutput: executionResult?.output ? executionResult.output.substring(0, 200) + '...' : null
-  });
-
-  // If we have GIF data, use the GifPlayer
+  });  // If we have GIF data, display it directly in the browser
   if (hasGifData) {
-    return (
-      <div className="space-y-6">
-        <div className="glass-card bg-gradient-to-br from-slate-900/90 to-purple-900/90 backdrop-blur-xl border border-white/20 rounded-3xl overflow-hidden hover-lift">
-          <div className="p-6">
-            <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-3">
-              🎞️ WARP Volume Animation
-              <Badge className="bg-green-100 text-green-800 border-green-300">
-                GIF • {actualVideoData?.frame_count} frames
-              </Badge>
-            </h3>
-            <GifPlayer 
-              gifData={actualVideoData?.gif_data}
-              gifBytestream={actualVideoData?.gif_bytestream}
-              gifUrl={actualVideoData?.gif_url}
-              gifFilename={actualVideoData?.gif_filename}
-              fps={fps}
-              resolution={resolution}
-              frameCount={actualVideoData?.frame_count}
-              duration={actualVideoData?.duration}
-              fileSizeBytes={actualVideoData?.file_size_bytes}
-            />
-          </div>
-        </div>
+    // State for zoom and scroll controls
+    const [zoomLevel, setZoomLevel] = useState(1);
+    
+    // Create GIF blob URL from bytestream or base64 data
+    const createGifUrl = () => {
+      if (actualVideoData?.gif_bytestream && actualVideoData.gif_bytestream.length > 0) {
+        try {
+          const byteArray = new Uint8Array(actualVideoData.gif_bytestream);
+          const blob = new Blob([byteArray], { type: 'image/gif' });
+          return URL.createObjectURL(blob);
+        } catch (e) {
+          console.error('Failed to create blob from bytestream:', e);
+          return null;
+        }
+      } else if (actualVideoData?.gif_data) {
+        return `data:image/gif;base64,${actualVideoData.gif_data}`;
+      } else if (actualVideoData?.gif_url) {
+        return actualVideoData.gif_url;
+      } else if (actualVideoData?.gif_filename) {
+        return `http://localhost:3001/gifs/${actualVideoData.gif_filename}`;
+      }
+      return null;
+    };
 
-        {/* Video Information Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="glass-card bg-gradient-to-br from-blue-50/80 to-cyan-50/80 backdrop-blur-sm border border-blue-200/50 p-6 rounded-2xl hover-lift">
+    const gifUrl = createGifUrl();
+
+    // Zoom controls
+    const zoomIn = () => setZoomLevel(prev => Math.min(prev * 1.2, 5));
+    const zoomOut = () => setZoomLevel(prev => Math.max(prev / 1.2, 0.1));
+    const resetZoom = () => setZoomLevel(1);
+
+    // Download function
+    const downloadGif = () => {
+      if (!gifUrl) return;
+      const link = document.createElement('a');
+      link.href = gifUrl;
+      link.download = actualVideoData?.gif_filename || 'warp_simulation.gif';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };    return (
+      <div className="space-y-6 w-full max-w-6xl mx-auto px-4">
+        {/* Fixed-size GIF Display Card */}
+        <Card className="bg-gradient-to-br from-slate-900/90 to-purple-900/90 backdrop-blur-xl border border-white/20 w-full max-w-4xl mx-auto overflow-hidden">
+          <CardHeader className="pb-2">
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-white flex items-center gap-2">
+                🎞️ WARP Volume Animation
+                <Badge variant="secondary" className="ml-2">
+                  GIF • {actualVideoData?.frame_count} frames
+                </Badge>
+              </CardTitle>
+              <div className="flex gap-2">
+                <Button
+                  onClick={downloadGif}
+                  variant="outline"
+                  size="sm"
+                  className="text-white border-white/30 hover:bg-white/10"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          
+          <CardContent className="p-4">
+            {/* Zoom Controls */}
+            <div className="flex justify-center gap-2 mb-4">
+              <Button
+                onClick={zoomOut}
+                variant="outline"
+                size="sm"
+                className="text-white border-white/30 hover:bg-white/10"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </Button>
+              <Button
+                onClick={resetZoom}
+                variant="outline"
+                size="sm"
+                className="text-white border-white/30 hover:bg-white/10 min-w-[80px]"
+              >
+                {Math.round(zoomLevel * 100)}%
+              </Button>
+              <Button
+                onClick={zoomIn}
+                variant="outline"
+                size="sm"
+                className="text-white border-white/30 hover:bg-white/10"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </Button>
+            </div>            {/* Fixed size GIF container with scroll */}
+            <div 
+              className="relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border-2 border-gray-600 w-full h-96 overflow-auto max-w-full"
+              style={{ scrollBehavior: 'smooth', contain: 'layout' }}
+            >
+              {gifUrl ? (
+                <div className="p-4 flex items-start justify-start min-w-full min-h-full">
+                  <img
+                    src={gifUrl}
+                    alt="WARP Volume Animation"
+                    className="rounded shadow-lg block"
+                    style={{ 
+                      imageRendering: 'crisp-edges',
+                      transform: `scale(${zoomLevel})`,
+                      transformOrigin: 'top left',
+                      transition: 'transform 0.2s ease-in-out'
+                    }}
+                    onLoad={() => console.log('✅ GIF loaded successfully')}
+                    onError={(e) => console.error('❌ GIF failed to load:', e)}                  />
+                </div>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-center text-white">
+                    <div className="w-24 h-24 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center">
+                      <Play className="w-12 h-12 ml-1" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">Failed to Load GIF</h3>
+                    <p className="text-blue-200">Check console for details</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>        </Card>        {/* Video Information Cards - Fixed Height */}
+        <div className="w-full max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="glass-card bg-gradient-to-br from-blue-50/80 to-cyan-50/80 backdrop-blur-sm border border-blue-200/50 p-6 rounded-2xl hover-lift h-48 border-2">
             <h3 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
               🎞️ Animation Details
             </h3>
@@ -154,7 +253,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
             </div>
           </div>
 
-          <div className="glass-card bg-gradient-to-br from-purple-50/80 to-pink-50/80 backdrop-blur-sm border border-purple-200/50 p-6 rounded-2xl hover-lift">
+          <div className="glass-card bg-gradient-to-br from-purple-50/80 to-pink-50/80 backdrop-blur-sm border border-purple-200/50 p-6 rounded-2xl hover-lift h-48 border-2">
             <h3 className="font-bold text-purple-800 mb-3 flex items-center gap-2">
               🧠 Simulation Status
             </h3>
@@ -175,7 +274,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
             </div>
           </div>
 
-          <div className="glass-card bg-gradient-to-br from-green-50/80 to-emerald-50/80 backdrop-blur-sm border border-green-200/50 p-6 rounded-2xl hover-lift">
+          <div className="glass-card bg-gradient-to-br from-green-50/80 to-emerald-50/80 backdrop-blur-sm border border-green-200/50 p-6 rounded-2xl hover-lift h-48 border-2">
             <h3 className="font-bold text-green-800 mb-3 flex items-center gap-2">
               ⚡ Performance
             </h3>
@@ -189,12 +288,12 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
                 <span className="font-mono text-green-700">
                   {actualVideoData?.file_size_bytes ? `${(actualVideoData.file_size_bytes / 1024).toFixed(1)} KB` : 'N/A'}
                 </span>
-              </div>
-              <div className="flex justify-between">
+              </div>              <div className="flex justify-between">
                 <span className="text-gray-600">GPU:</span>
                 <span className="font-mono text-green-700">Auto-detect</span>
               </div>
             </div>
+          </div>
           </div>
         </div>
 

@@ -14,6 +14,7 @@ import TestIndex2 from "./components/TestIndex2";
 import TestIndex3 from "./components/TestIndex3";
 import TestIndex4 from "./components/TestIndex4";
 import ErrorBoundary from "./components/ErrorBoundary";
+import GifTestPage from "./pages/GifTestPage";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => {
                 <Route path="/test4" element={<TestIndex4 />} />
                 <Route path="/full" element={<Index />} />
                 <Route path="/test" element={<TestApp />} />
+                <Route path="/gif-test" element={<GifTestPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

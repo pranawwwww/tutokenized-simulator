@@ -124,37 +124,53 @@ image = wp.empty(shape=(resolution[1], resolution[0], 3), dtype=float)
 renders = []
 print("Starting WARP volume simulation...")
 
-for frame in range(num_frames):
-    print(f"Rendering frame {frame + 1}/{num_frames}")
-    
-    wp.launch(
-        make_field,
-        dim=field.shape,
-        inputs=(
-            torus_altitude,
-            torus_major_radius,
-            torus_minor_radius,
-            smooth_min_radius,
-            dim,
-            frame / fps,
-        ),
-        outputs=(field,),
-    )
+try:
+    for frame in range(num_frames):
+        print(f"Rendering frame {frame + 1}/{num_frames}")
+        
+        wp.launch(
+            make_field,
+            dim=field.shape,
+            inputs=(
+                torus_altitude,
+                torus_major_radius,
+                torus_minor_radius,
+                smooth_min_radius,
+                dim,
+                frame / fps,
+            ),
+            outputs=(field,),
+        )
 
-    mc.surface(field, 0.0)
+        mc.surface(field, 0.0)
 
-    renderer.begin_frame(frame / num_frames)
-    renderer.render_mesh(
-        "surface",
-        mc.verts.numpy(),
-        mc.indices.numpy(),
-        colors=((0.35, 0.55, 0.9),) * len(mc.verts),
-        update_topology=True,
-    )
-    renderer.end_frame()
+        renderer.begin_frame(frame / num_frames)
+        renderer.render_mesh(
+            "surface",
+            mc.verts.numpy(),
+            mc.indices.numpy(),
+            colors=((0.35, 0.55, 0.9),) * len(mc.verts),
+            update_topology=True,
+        )
+        renderer.end_frame()
 
-    renderer.get_pixels(image, split_up_tiles=False, mode="rgb")
-    renders.append(wp.clone(image, device="cpu", pinned=True))
+        renderer.get_pixels(image, split_up_tiles=False, mode="rgb")
+        renders.append(wp.clone(image, device="cpu", pinned=True))
+
+except Exception as e:
+    print(f"ERROR during frame rendering: {e}")
+    # Output error format that VideoSimulation can handle
+    error_output = {
+        'type': 'gif_animation',
+        'error': f'Frame rendering failed: {str(e)}',
+        'fps': fps,
+        'resolution': resolution,
+        'frame_count': 0,
+        'duration': 0,
+        'file_size_bytes': 0
+    }
+    print(f"GIF_OUTPUT:{json.dumps(error_output)}")
+    exit(1)
 
 # ---------- Convert frames to GIF for frontend ----------
 
@@ -171,52 +187,106 @@ def frame_to_pil_image(frame_array):
             from PIL import Image
             return Image.fromarray(frame_uint8)
         except ImportError:
-            print("PIL not available, cannot create GIF")
+            print("WARNING: PIL not available, cannot create GIF")
             return None
     except Exception as e:
-        print(f"Frame conversion error: {e}")
+        print(f"ERROR: Frame conversion failed: {e}")
         return None
 
 print("Converting frames to GIF animation...")
 gif_frames = []
-for i, render in enumerate(renders):
-    frame_data = render.numpy()
-    pil_image = frame_to_pil_image(frame_data)
-    if pil_image:
-        gif_frames.append(pil_image)
-        if (i + 1) % 5 == 0:  # Progress indicator
-            print(f"  Converted frame {i + 1}/{len(renders)}")
+
+try:
+    for i, render in enumerate(renders):
+        frame_data = render.numpy()
+        pil_image = frame_to_pil_image(frame_data)
+        if pil_image:
+            gif_frames.append(pil_image)
+            if (i + 1) % 5 == 0:  # Progress indicator
+                print(f"  Converted frame {i + 1}/{len(renders)}")
+        else:
+            print(f"WARNING: Failed to convert frame {i + 1}")
+
+except Exception as e:
+    print(f"ERROR during frame conversion: {e}")
+    # Output error format
+    error_output = {
+        'type': 'gif_animation',
+        'error': f'Frame conversion failed: {str(e)}',
+        'fps': fps,
+        'resolution': resolution,
+        'frame_count': 0,
+        'duration': 0,
+        'file_size_bytes': 0
+    }
+    print(f"GIF_OUTPUT:{json.dumps(error_output)}")
+    exit(1)
 
 # Create GIF in memory
 if gif_frames:
-    print("Creating GIF animation...")
-    gif_buffer = io.BytesIO()
-    gif_frames[0].save(
-        gif_buffer,
-        format='GIF',
-        save_all=True,
-        append_images=gif_frames[1:],
-        duration=int(1000/fps),  # Duration per frame in milliseconds
-        loop=0,  # Infinite loop
-        optimize=True
-    )
+    try:
+        print("Creating GIF animation...")
+        gif_buffer = io.BytesIO()
+        gif_frames[0].save(
+            gif_buffer,
+            format='GIF',
+            save_all=True,
+            append_images=gif_frames[1:],
+            duration=int(1000/fps),  # Duration per frame in milliseconds
+            loop=0,  # Infinite loop
+            optimize=True
+        )
+        
+        # Get raw byte data for frontend compatibility
+        gif_bytes = gif_buffer.getvalue()
+        gif_bytestream = list(gif_bytes)  # Convert to list of integers
+        
+        # Convert to base64 as backup
+        gif_base64 = base64.b64encode(gif_bytes).decode('utf-8')
+        
+        # Output GIF data as JSON for backend to capture
+        # This format matches what VideoSimulation.tsx expects
+        gif_output = {
+            'type': 'gif_animation',
+            'gif_data': gif_base64,  # base64 format as backup
+            'gif_bytestream': gif_bytestream,  # Raw bytes as integer array (preferred)
+            'fps': fps,
+            'resolution': resolution,
+            'frame_count': len(gif_frames),
+            'duration': len(gif_frames) / fps,
+            'file_size_bytes': len(gif_bytes),
+            'gif_filename': f'warp_volume_{len(gif_frames)}frames.gif'
+        }
+        
+        print(f"GIF_OUTPUT:{json.dumps(gif_output)}")
+        print(f"Simulation complete! Generated GIF with {len(gif_frames)} frames.")
+        print(f"GIF size: {len(gif_bytes)} bytes")
+        print(f"Bytestream length: {len(gif_bytestream)} integers")
     
-    # Convert to base64
-    gif_base64 = base64.b64encode(gif_buffer.getvalue()).decode('utf-8')
-    
-    # Output GIF data as JSON for backend to capture
-    gif_output = {
+    except Exception as e:
+        print(f"ERROR during GIF creation: {e}")
+        # Output error format
+        error_output = {
+            'type': 'gif_animation',
+            'error': f'GIF creation failed: {str(e)}',
+            'fps': fps,
+            'resolution': resolution,
+            'frame_count': len(gif_frames),
+            'duration': 0,
+            'file_size_bytes': 0
+        }
+        print(f"GIF_OUTPUT:{json.dumps(error_output)}")
+
+else:
+    # Output error format that VideoSimulation can handle
+    error_output = {
         'type': 'gif_animation',
-        'gif_data': gif_base64,
+        'error': 'No frames were generated for GIF creation',
         'fps': fps,
         'resolution': resolution,
-        'frame_count': len(gif_frames),
-        'duration': len(gif_frames) / fps,
-        'file_size_bytes': len(gif_buffer.getvalue())
+        'frame_count': 0,
+        'duration': 0,
+        'file_size_bytes': 0
     }
-    
-    print(f"GIF_OUTPUT:{json.dumps(gif_output)}")
-    print(f"Simulation complete! Generated GIF with {len(gif_frames)} frames.")
-    print(f"GIF size: {len(gif_buffer.getvalue())} bytes")
-else:
-    print("No frames were generated for GIF creation.")
+    print(f"GIF_OUTPUT:{json.dumps(error_output)}")
+    print("ERROR: No frames were generated for GIF creation.")
