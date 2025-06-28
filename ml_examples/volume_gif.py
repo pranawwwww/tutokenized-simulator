@@ -2,13 +2,13 @@ import warp as wp
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
-import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import pyglet
 import warp.render
 import json
 import base64
 import io
+from PIL import Image
 
 # Warp config
 wp.config.quiet = True
@@ -85,11 +85,11 @@ def make_field(
 
 # ---------- Simulation Settings ----------
 
-resolution = (512, 384)
-num_frames = 30  # Reduced for faster execution
-fps = 30
+resolution = (400, 300)  # Smaller resolution for GIF
+num_frames = 20  # Fewer frames for manageable GIF size
+fps = 10  # Lower FPS for smooth GIF
 
-dim = 32  # Reduced for faster execution
+dim = 32
 max_verts = int(1e6)
 max_tris = int(1e6)
 
@@ -101,7 +101,7 @@ smooth_min_radius = 0.5
 field = wp.zeros((dim, dim, dim), dtype=float)
 mc = wp.MarchingCubes(dim, dim, dim, max_verts, max_tris)
 
-camera_pos = (16.0, 16.0, 75.0)  # Adjusted for smaller dim
+camera_pos = (16.0, 16.0, 75.0)
 camera_front = (0.0, -0.2, -1.0)
 
 renderer = wp.render.OpenGLRenderer(
@@ -114,15 +114,15 @@ renderer = wp.render.OpenGLRenderer(
     draw_grid=False,
     draw_axis=False,
     vsync=False,
-    headless=True,  # Enable headless mode for server
+    headless=True,
 )
 
 image = wp.empty(shape=(resolution[1], resolution[0], 3), dtype=float)
 
 # ---------- Frame Rendering Loop ----------
 
-renders = []
-print("Starting WARP volume simulation...")
+print("Starting WARP volume simulation for GIF generation...")
+gif_frames = []
 
 for frame in range(num_frames):
     print(f"Rendering frame {frame + 1}/{num_frames}")
@@ -154,69 +154,47 @@ for frame in range(num_frames):
     renderer.end_frame()
 
     renderer.get_pixels(image, split_up_tiles=False, mode="rgb")
-    renders.append(wp.clone(image, device="cpu", pinned=True))
+    
+    # Convert frame to PIL Image
+    frame_data = image.numpy()
+    if frame_data.dtype != np.uint8:
+        frame_data = (frame_data * 255).astype(np.uint8)
+    
+    pil_image = Image.fromarray(frame_data)
+    gif_frames.append(pil_image)
 
-# ---------- Convert frames to GIF for frontend ----------
+wp.synchronize()
 
-def frame_to_pil_image(frame_array):
-    """Convert numpy frame to PIL Image"""
-    try:
-        # Convert to uint8
-        if frame_array.dtype != np.uint8:
-            frame_uint8 = (frame_array * 255).astype(np.uint8)
-        else:
-            frame_uint8 = frame_array
-        
-        try:
-            from PIL import Image
-            return Image.fromarray(frame_uint8)
-        except ImportError:
-            print("PIL not available, cannot create GIF")
-            return None
-    except Exception as e:
-        print(f"Frame conversion error: {e}")
-        return None
+# ---------- Create GIF ----------
 
-print("Converting frames to GIF animation...")
-gif_frames = []
-for i, render in enumerate(renders):
-    frame_data = render.numpy()
-    pil_image = frame_to_pil_image(frame_data)
-    if pil_image:
-        gif_frames.append(pil_image)
-        if (i + 1) % 5 == 0:  # Progress indicator
-            print(f"  Converted frame {i + 1}/{len(renders)}")
+print("Converting frames to GIF...")
 
 # Create GIF in memory
-if gif_frames:
-    print("Creating GIF animation...")
-    gif_buffer = io.BytesIO()
-    gif_frames[0].save(
-        gif_buffer,
-        format='GIF',
-        save_all=True,
-        append_images=gif_frames[1:],
-        duration=int(1000/fps),  # Duration per frame in milliseconds
-        loop=0,  # Infinite loop
-        optimize=True
-    )
-    
-    # Convert to base64
-    gif_base64 = base64.b64encode(gif_buffer.getvalue()).decode('utf-8')
-    
-    # Output GIF data as JSON for backend to capture
-    gif_output = {
-        'type': 'gif_animation',
-        'gif_data': gif_base64,
-        'fps': fps,
-        'resolution': resolution,
-        'frame_count': len(gif_frames),
-        'duration': len(gif_frames) / fps,
-        'file_size_bytes': len(gif_buffer.getvalue())
-    }
-    
-    print(f"GIF_OUTPUT:{json.dumps(gif_output)}")
-    print(f"Simulation complete! Generated GIF with {len(gif_frames)} frames.")
-    print(f"GIF size: {len(gif_buffer.getvalue())} bytes")
-else:
-    print("No frames were generated for GIF creation.")
+gif_buffer = io.BytesIO()
+gif_frames[0].save(
+    gif_buffer,
+    format='GIF',
+    save_all=True,
+    append_images=gif_frames[1:],
+    duration=int(1000/fps),  # Duration per frame in milliseconds
+    loop=0,  # Infinite loop
+    optimize=True
+)
+
+# Convert to base64
+gif_base64 = base64.b64encode(gif_buffer.getvalue()).decode('utf-8')
+
+# Output GIF data as JSON for backend to capture
+gif_output = {
+    'type': 'gif_animation',
+    'gif_data': gif_base64,
+    'fps': fps,
+    'resolution': resolution,
+    'frame_count': len(gif_frames),
+    'duration': len(gif_frames) / fps,
+    'file_size_bytes': len(gif_buffer.getvalue())
+}
+
+print(f"GIF_OUTPUT:{json.dumps(gif_output)}")
+print(f"Simulation complete! Generated GIF with {len(gif_frames)} frames.")
+print(f"GIF size: {len(gif_buffer.getvalue())} bytes")

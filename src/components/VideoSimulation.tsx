@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Play, Pause, RotateCcw, Volume2, Maximize2 } from 'lucide-react';
 import SimpleVideoPlayer from './SimpleVideoPlayer';
+import GifPlayer from './GifPlayer';
 
 interface VideoSimulationProps {
   executionResult?: {
@@ -22,6 +23,9 @@ interface VideoSimulationProps {
       resolution?: [number, number];
       frame_count?: number;
       duration?: number;
+      // GIF-specific data
+      gif_data?: string;
+      file_size_bytes?: number;
     };
   };
 }
@@ -43,10 +47,13 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
     });
   }, [executionResult]);
 
-  // Check if we have video frame data
+  // Check if we have video frame data or GIF data
   const hasVideoFrames = executionResult?.video_data?.type === 'video_frames' && 
                         executionResult?.video_data?.frames && 
                         executionResult.video_data.frames.length > 0;
+
+  const hasGifData = executionResult?.video_data?.type === 'gif_animation' && 
+                    executionResult?.video_data?.gif_data;
 
   const videoData = executionResult?.video_data;
   const frames = videoData?.frames || [];
@@ -55,11 +62,130 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
 
   console.log('🎬 VideoSimulation render:', {
     hasVideoFrames,
+    hasGifData,
     frameCount: frames.length,
     fps,
     resolution,
-    executionSuccess: executionResult?.success
+    executionSuccess: executionResult?.success,
+    videoDataType: videoData?.type
   });
+
+  // If we have GIF data, use the GifPlayer
+  if (hasGifData) {
+    return (
+      <div className="space-y-6">
+        <div className="glass-card bg-gradient-to-br from-slate-900/90 to-purple-900/90 backdrop-blur-xl border border-white/20 rounded-3xl overflow-hidden hover-lift">
+          <div className="p-6">
+            <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+              🎞️ WARP Volume Animation
+              <Badge className="bg-green-100 text-green-800 border-green-300">
+                GIF • {videoData?.frame_count} frames
+              </Badge>
+            </h3>
+            <GifPlayer 
+              gifData={videoData?.gif_data}
+              fps={fps}
+              resolution={resolution}
+              frameCount={videoData?.frame_count}
+              duration={videoData?.duration}
+              fileSizeBytes={videoData?.file_size_bytes}
+            />
+          </div>
+        </div>
+
+        {/* Video Information Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="glass-card bg-gradient-to-br from-blue-50/80 to-cyan-50/80 backdrop-blur-sm border border-blue-200/50 p-6 rounded-2xl hover-lift">
+            <h3 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
+              🎞️ Animation Details
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Resolution:</span>
+                <span className="font-mono text-blue-700">{resolution[0]}x{resolution[1]}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Frame Rate:</span>
+                <span className="font-mono text-blue-700">{fps} FPS</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Frames:</span>
+                <span className="font-mono text-blue-700">{videoData?.frame_count}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Duration:</span>
+                <span className="font-mono text-blue-700">{videoData?.duration?.toFixed(2)}s</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-card bg-gradient-to-br from-purple-50/80 to-pink-50/80 backdrop-blur-sm border border-purple-200/50 p-6 rounded-2xl hover-lift">
+            <h3 className="font-bold text-purple-800 mb-3 flex items-center gap-2">
+              🧠 Simulation Status
+            </h3>
+            <div className="space-y-3">
+              <Badge className="bg-green-100 text-green-800 border-green-300">
+                Completed
+              </Badge>
+              <div className="text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Type:</span>
+                  <span className="font-mono text-purple-700">WARP Volume</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Format:</span>
+                  <span className="font-mono text-purple-700">Animated GIF</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-card bg-gradient-to-br from-green-50/80 to-emerald-50/80 backdrop-blur-sm border border-green-200/50 p-6 rounded-2xl hover-lift">
+            <h3 className="font-bold text-green-800 mb-3 flex items-center gap-2">
+              ⚡ Performance
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Status:</span>
+                <span className="font-mono text-green-700">Success</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">File Size:</span>
+                <span className="font-mono text-green-700">
+                  {videoData?.file_size_bytes ? `${(videoData.file_size_bytes / 1024).toFixed(1)} KB` : 'N/A'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">GPU:</span>
+                <span className="font-mono text-green-700">Auto-detect</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Execution Output if available */}
+        {(executionResult?.output || executionResult?.error) && (
+          <div className="glass-card bg-white/60 backdrop-blur-sm border border-gray-200/50 rounded-2xl p-6">
+            <h4 className="font-bold mb-4 flex items-center gap-3">
+              <Badge variant="outline" className={executionResult?.success ? "bg-green-50 text-green-700 border-green-300" : "bg-red-50 text-red-700 border-red-300"}>
+                {executionResult?.success ? 'Output' : 'Error'}
+              </Badge>
+              Execution Log
+            </h4>
+            <div className="bg-gray-900 rounded-xl p-4 font-mono text-sm text-green-400 max-h-40 overflow-y-auto">
+              <div className="space-y-1">
+                {executionResult?.success ? (
+                  <pre className="whitespace-pre-wrap">{executionResult.output}</pre>
+                ) : (
+                  <pre className="text-red-400 whitespace-pre-wrap">{executionResult?.error}</pre>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // If we have video frames, use the AdvancedVideoPlayer
   if (hasVideoFrames) {

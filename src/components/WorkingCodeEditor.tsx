@@ -12,19 +12,161 @@ interface CodeEditorProps {
 const WorkingCodeEditor: React.FC<CodeEditorProps> = ({ onExecutionResult }) => {
   console.log('WorkingCodeEditor rendering...');
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
-    const [code, setCode] = useState(`# 🚀 NVIDIA GPU Acceleration Demo
-# Choose one of these examples to see GPU vs CPU performance:
+    const [code, setCode] = useState(`# 🎞️ WARP Volume Simulation - GIF Generation
+# This creates an animated GIF of a 3D volume simulation
 
-# === EXAMPLE 1: Neural Network Training ===
-# Uncomment this section to test ML training acceleration:
+# === WARP VOLUME SIMULATION WITH GIF OUTPUT ===
+# Run this to see the new GIF animation flow:
+
+import warp as wp
+import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import pyglet
+import warp.render
+import json
+import base64
+import io
+
+# WARP config
+wp.config.quiet = True
+wp.init()
+pyglet.options["headless"] = True
+
+# Simple SDF functions
+@wp.func
+def sdf_create_sphere(pos: wp.vec3, radius: float):
+    return wp.length(pos) - radius
+
+@wp.func
+def sdf_translate(pos: wp.vec3, offset: wp.vec3):
+    return pos - offset
+
+@wp.kernel(enable_backward=False)
+def make_field(time: float, dim: int, out_data: wp.array3d(dtype=float)):
+    i, j, k = wp.tid()
+    pos = wp.vec3(
+        2.0 * ((float(i) + 0.5) / float(dim)) - 1.0,
+        2.0 * ((float(j) + 0.5) / float(dim)) - 1.0,
+        2.0 * ((float(k) + 0.5) / float(dim)) - 1.0,
+    )
+    
+    # Animated sphere
+    sphere_pos = wp.vec3(wp.sin(time) * 0.5, wp.cos(time) * 0.3, 0.0)
+    sphere = sdf_create_sphere(sdf_translate(pos, sphere_pos), 0.4)
+    out_data[i, j, k] = sphere
+
+# Simulation settings
+resolution = (300, 225)  # Smaller for faster GIF
+num_frames = 15
+fps = 8
+dim = 24
+
+field = wp.zeros((dim, dim, dim), dtype=float)
+mc = wp.MarchingCubes(dim, dim, dim, int(5e5), int(5e5))
+
+renderer = wp.render.OpenGLRenderer(
+    fps=fps, screen_width=resolution[0], screen_height=resolution[1],
+    camera_pos=(12.0, 12.0, 30.0), camera_front=(0.0, -0.2, -1.0),
+    far_plane=100.0, draw_grid=False, draw_axis=False,
+    vsync=False, headless=True
+)
+
+image = wp.empty(shape=(resolution[1], resolution[0], 3), dtype=float)
+
+print("🎬 Starting WARP volume GIF generation...")
+gif_frames = []
+
+for frame in range(num_frames):
+    print(f"Frame {frame + 1}/{num_frames}")
+    
+    wp.launch(make_field, dim=field.shape, inputs=(frame / fps, dim), outputs=(field,))
+    mc.surface(field, 0.0)
+    
+    renderer.begin_frame(frame / num_frames)
+    renderer.render_mesh("surface", mc.verts.numpy(), mc.indices.numpy(), 
+                        colors=((0.2, 0.7, 1.0),) * len(mc.verts), update_topology=True)
+    renderer.end_frame()
+    
+    renderer.get_pixels(image, split_up_tiles=False, mode="rgb")
+    frame_data = image.numpy()
+    
+    if frame_data.dtype != np.uint8:
+        frame_data = (frame_data * 255).astype(np.uint8)
+    
+    try:
+        from PIL import Image as PILImage
+        pil_image = PILImage.fromarray(frame_data)
+        gif_frames.append(pil_image)
+    except ImportError:
+        print("PIL not available - install with: pip install Pillow")
+        break
+
+wp.synchronize()
+
+# Create GIF
+if gif_frames:
+    print("Creating GIF...")
+    gif_buffer = io.BytesIO()
+    gif_frames[0].save(gif_buffer, format='GIF', save_all=True, 
+                      append_images=gif_frames[1:], duration=int(1000/fps), 
+                      loop=0, optimize=True)
+    
+    gif_base64 = base64.b64encode(gif_buffer.getvalue()).decode('utf-8')
+    
+    gif_output = {
+        'type': 'gif_animation',
+        'gif_data': gif_base64,
+        'fps': fps,
+        'resolution': resolution,
+        'frame_count': len(gif_frames),
+        'duration': len(gif_frames) / fps,
+        'file_size_bytes': len(gif_buffer.getvalue())
+    }
+    
+    print(f"GIF_OUTPUT:{json.dumps(gif_output)}")
+    print(f"✅ GIF complete! {len(gif_frames)} frames, {len(gif_buffer.getvalue())} bytes")
+
+# === ALTERNATIVE: Simple Test Pattern ===
+# Uncomment this for a basic test without WARP dependencies:
 
 """
-import torch
-import time
 import numpy as np
+import json
+import base64
+import io
 
-print("🧠 Neural Network GPU Acceleration Test")
-print("=" * 40)
+try:
+    from PIL import Image
+    
+    print("🎨 Creating test animation...")
+    frames = []
+    for i in range(10):
+        # Create animated pattern
+        frame = np.zeros((100, 100, 3), dtype=np.uint8)
+        x = int((i / 10) * 80)
+        frame[40:60, x:x+20] = [255, 100, 100]  # Moving red box
+        frames.append(Image.fromarray(frame))
+    
+    # Create GIF
+    gif_buffer = io.BytesIO()
+    frames[0].save(gif_buffer, format='GIF', save_all=True,
+                  append_images=frames[1:], duration=100, loop=0)
+    
+    gif_output = {
+        'type': 'gif_animation',
+        'gif_data': base64.b64encode(gif_buffer.getvalue()).decode('utf-8'),
+        'fps': 10, 'resolution': [100, 100], 'frame_count': 10,
+        'duration': 1.0, 'file_size_bytes': len(gif_buffer.getvalue())
+    }
+    
+    print(f"GIF_OUTPUT:{json.dumps(gif_output)}")
+    print("✅ Test GIF created!")
+    
+except ImportError:
+    print("Install Pillow: pip install Pillow")
+"""
 
 # Check GPU availability
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

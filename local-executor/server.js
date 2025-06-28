@@ -639,6 +639,20 @@ app.post('/execute', (req, res) => {
                 }
             }
             
+            // Parse GIF_OUTPUT from stdout if present
+            if (stdout && stdout.includes('GIF_OUTPUT:')) {
+                try {
+                    const gifOutputMatch = stdout.match(/GIF_OUTPUT:(.+)/);
+                    if (gifOutputMatch) {
+                        const gifOutputData = JSON.parse(gifOutputMatch[1]);
+                        console.log(`🎞️ Found GIF_OUTPUT with ${gifOutputData.frame_count || 0} frames, size: ${gifOutputData.file_size_bytes || 0} bytes`);
+                        Object.assign(videoData, gifOutputData);
+                    }
+                } catch (parseError) {
+                    console.error('Failed to parse GIF_OUTPUT:', parseError);
+                }
+            }
+            
             // Run benchmarks if execution was successful
             let benchmarks = null;
             if (!error) {
