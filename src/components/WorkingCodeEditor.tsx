@@ -249,17 +249,22 @@ print("\\n💡 Uncomment the examples above to see real GPU acceleration!")`);
     } catch (error: any) {
       console.error('Code execution failed:', error);
       
+      const errorMessage = error?.message || error?.toString() || 'Unknown error occurred during execution';
+      
       if (onExecutionResult) {
         onExecutionResult({
           id: Date.now().toString(),
           success: false,
           output: '',
-          error: `Execution failed: ${error.message}`,
+          error: `Execution failed: ${errorMessage}`,
           execution_time: 0,
           timestamp: new Date().toISOString(),
           code: code,
           executor_type: currentExecutor,
-          system_info: {}
+          system_info: {
+            error_details: error,
+            executor_config: 'SOL VM Queue-based execution'
+          }
         });
       }
     } finally {

@@ -120,18 +120,36 @@ export class HybridSolVMExecutor {
     };
 
     try {
+      console.log('Starting SOL VM execution:', {
+        taskId: taskId,
+        codeLength: code.length,
+        timeout: timeout
+      });
+      
       // Submit task to the queue
       await this.submitTask(task);
       
       // Start polling for result
-      return await this.pollForResult(taskId, timeout + 10); // Add buffer time
+      const result = await this.pollForResult(taskId, timeout + 10); // Add buffer time
+      
+      console.log('SOL VM execution completed:', {
+        taskId: taskId,
+        success: result.success,
+        hasVideoOutput: !!(result as any).video_data
+      });
+      
+      return result;
       
     } catch (error: any) {
+      console.error('SOL VM execution failed:', error);
+      
+      const errorMessage = error.message || error.toString() || 'Unknown error occurred';
+      
       return {
         id: taskId,
         success: false,
         output: '',
-        error: `Failed to submit task or get result: ${error.message}`,
+        error: `SOL VM execution failed: ${errorMessage}`,
         execution_time: 0,
         timestamp: new Date().toISOString(),
         code: code,
@@ -148,19 +166,38 @@ export class HybridSolVMExecutor {
    * Submit task to the message queue
    */
   private async submitTask(task: TaskSubmission): Promise<void> {
-    const apiKey = import.meta.env.VITE_API_KEY || 'dev-api-key';
-    
-    const response = await fetch(this.taskQueueUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(task)
-    });
+    try {
+      const apiKey = import.meta.env.VITE_API_KEY || 'dev-api-key';
+      
+      console.log('Submitting task to SOL VM queue:', {
+        taskId: task.id,
+        taskQueueUrl: this.taskQueueUrl,
+        hasApiKey: !!apiKey
+      });
+      
+      const response = await fetch(this.taskQueueUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(task)
+      });
 
-    if (!response.ok) {
-      throw new Error(`Failed to submit task: ${response.status} ${response.statusText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Task submission failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        throw new Error(`Failed to submit task to SOL VM: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+      
+      console.log('Task submitted successfully to SOL VM queue');
+    } catch (error: any) {
+      console.error('Error submitting task to SOL VM:', error);
+      throw new Error(`Failed to submit task to SOL VM: ${error.message || 'Unknown error'}`);
     }
   }
 
