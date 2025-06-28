@@ -11,7 +11,7 @@ import ChatbotBubble from '../components/ChatbotBubble';
 const Index = () => {
   console.log('Index page rendering...');
   
-  const [activeTab, setActiveTab] = useState('simulation');
+  const [activeTab, setActiveTab] = useState('benchmarks');
   const [executionResult, setExecutionResult] = useState<any>(null);
 
   const handleExecutionResult = (result: any) => {
