@@ -59,8 +59,7 @@ const WorkspaceTabs = ({ activeTab, setActiveTab, executionResult }: WorkspaceTa
         <TabsContent value="video" className="p-0 h-[550px]">
           <ScrollArea className="h-full p-6">
             <VideoSimulation 
-              streamData={streamingData}
-              isStreaming={isStreaming}
+              executionResult={executionResult}
             />
           </ScrollArea>
         </TabsContent>
