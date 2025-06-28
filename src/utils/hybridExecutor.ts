@@ -256,28 +256,25 @@ export class HybridSolVMExecutor {
       return [];
     }
   }
-
   /**
    * Check if the system is healthy
    */
   async checkHealth(): Promise<boolean> {
     try {
-      // Check both task queue and result queue health
-      const [taskQueueHealth, resultQueueHealth] = await Promise.all([
-        fetch(`${this.taskQueueUrl}/health`).then(r => r.ok),
-        fetch(`${this.resultQueueUrl}/health`).then(r => r.ok)
-      ]);
-
-      return taskQueueHealth && resultQueueHealth;
+      // Extract base URL from task queue URL
+      const baseUrl = this.taskQueueUrl.replace('/tasks', '');
+      
+      const response = await fetch(`${baseUrl}/health`);
+      return response.ok;
     } catch (error) {
+      console.warn('Health check failed:', error);
       return false;
     }
   }
 
   /**
    * Get queue status and statistics
-   */
-  async getQueueStatus(): Promise<{
+   */  async getQueueStatus(): Promise<{
     pending_tasks: number;
     active_vms: number;
     avg_execution_time: number;
@@ -285,8 +282,9 @@ export class HybridSolVMExecutor {
   }> {
     try {
       const apiKey = import.meta.env.VITE_API_KEY || 'dev-api-key';
+      const baseUrl = this.taskQueueUrl.replace('/tasks', '');
       
-      const response = await fetch(`${this.taskQueueUrl}/status`, {
+      const response = await fetch(`${baseUrl}/status`, {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
         }
@@ -298,6 +296,7 @@ export class HybridSolVMExecutor {
 
       return await response.json();
     } catch (error) {
+      console.warn('Failed to get queue status:', error);
       return {
         pending_tasks: 0,
         active_vms: 0,

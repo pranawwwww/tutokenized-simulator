@@ -6,12 +6,56 @@ const { exec } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
 const os = require('os');
 
+// Function to get the correct Python command for the current platform
+function getPythonCommand() {
+    const platform = os.platform();
+    
+    // On Windows, try python first, then python3
+    if (platform === 'win32') {
+        return 'python';
+    }
+    
+    // On Unix-like systems, prefer python3
+    return 'python3';
+}
+
+// Function to check if Python is available
+function checkPythonAvailability() {
+    return new Promise((resolve) => {
+        const pythonCmd = getPythonCommand();
+        exec(`${pythonCmd} --version`, (error, stdout, stderr) => {
+            if (error) {
+                // Try alternative command
+                const altCmd = pythonCmd === 'python' ? 'python3' : 'python';
+                exec(`${altCmd} --version`, (altError, altStdout, altStderr) => {
+                    if (altError) {
+                        resolve({ available: false, command: null, version: null });
+                    } else {
+                        resolve({ 
+                            available: true, 
+                            command: altCmd, 
+                            version: altStdout.trim() || altStderr.trim() 
+                        });
+                    }
+                });
+            } else {
+                resolve({ 
+                    available: true, 
+                    command: pythonCmd, 
+                    version: stdout.trim() || stderr.trim() 
+                });
+            }
+        });
+    });
+}
+
 const app = express();
 const PORT = 3001;
 
 console.log('🚀 Local Python Executor starting...');
 
-// Function to get system metrics
+// Global Python command - will be set after checking availability
+let PYTHON_COMMAND = 'python';
 async function getSystemMetrics() {
     return new Promise((resolve) => {
         const metrics = {
@@ -118,24 +162,42 @@ async function getSystemMetrics() {
 
 // Function to run Python benchmarks
 async function runBenchmarks() {
-    return new Promise((resolve) => {
-        const benchmarkCode = `
+    return new Promise((resolve) => {        const benchmarkCode = `
 import time
-import numpy as np
 import sys
 import gc
 import platform
-import psutil
 import os
+
+# Try to import optional packages
+try:
+    import numpy as np
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
+    print("NumPy not available, using basic benchmarks")
+
+try:
+    import psutil
+    HAS_PSUTIL = True
+except ImportError:
+    HAS_PSUTIL = False
+    print("psutil not available, using basic system info")
 
 def benchmark_matrix_multiplication():
     """Large matrix multiplication benchmark"""
     print("Running matrix multiplication benchmark...")
     start = time.time()
-    a = np.random.rand(1500, 1500).astype(np.float32)
-    b = np.random.rand(1500, 1500).astype(np.float32)
-    c = np.dot(a, b)
-    del a, b, c
+    
+    if HAS_NUMPY:
+        a = np.random.rand(1000, 1000).astype(np.float32)
+        b = np.random.rand(1000, 1000).astype(np.float32)
+        c = np.dot(a, b)
+        del a, b, c
+    else:
+        # Fallback to basic operations
+        result = sum(i * j for i in range(1000) for j in range(10))
+    
     gc.collect()
     end = time.time()
     return end - start
@@ -145,7 +207,7 @@ def benchmark_memory_access():
     print("Running memory access benchmark...")
     start = time.time()
     # Large list operations
-    data = [i ** 2 for i in range(2000000)]
+    data = [i ** 2 for i in range(1000000)]
     # Memory access patterns
     result = sum(data[::100])  # Strided access
     del data
@@ -157,7 +219,7 @@ def benchmark_cpu_intensive():
     """CPU-intensive computation benchmark"""
     print("Running CPU intensive benchmark...")
     start = time.time()
-    result = sum(i ** 0.5 + i ** 1.5 for i in range(1500000))
+    result = sum(i ** 0.5 + i ** 1.5 for i in range(500000))
     end = time.time()
     return result, end - start
 
@@ -165,57 +227,88 @@ def benchmark_io_operations():
     """File I/O benchmark"""
     print("Running I/O benchmark...")
     start = time.time()
-    data = "test data\\n" * 100000
-    with open("/tmp/benchmark_test.txt", "w") as f:
+    data = "test data\\n" * 50000
+    
+    # Use temp directory that exists on all platforms
+    import tempfile
+    temp_file = os.path.join(tempfile.gettempdir(), "benchmark_test.txt")
+    
+    with open(temp_file, "w") as f:
         f.write(data)
-    with open("/tmp/benchmark_test.txt", "r") as f:
+    with open(temp_file, "r") as f:
         content = f.read()
-    os.remove("/tmp/benchmark_test.txt")
+    
+    try:
+        os.remove(temp_file)
+    except:
+        pass
+        
     end = time.time()
     return end - start
 
 # System info
 def get_system_info():
-    try:
-        import psutil
-        cpu_freq = psutil.cpu_freq()
-        memory = psutil.virtual_memory()
-        return {
-            'cpu_count': psutil.cpu_count(),
-            'cpu_freq': cpu_freq.current if cpu_freq else 0,
-            'memory_total': memory.total // (1024**3),
-            'memory_available': memory.available // (1024**3)
-        }
-    except ImportError:
-        return {}
+    info = {
+        'python_version': sys.version.split()[0],
+        'platform': platform.system(),
+        'architecture': platform.architecture()[0]
+    }
+    
+    if HAS_PSUTIL:
+        try:
+            cpu_freq = psutil.cpu_freq()
+            memory = psutil.virtual_memory()
+            info.update({
+                'cpu_count': psutil.cpu_count(),
+                'cpu_freq': cpu_freq.current if cpu_freq else 0,
+                'memory_total': memory.total // (1024**3),
+                'memory_available': memory.available // (1024**3)
+            })
+        except:
+            pass
+    
+    return info
 
 # Run benchmarks
 print("BENCHMARK_START")
 print("System:", platform.system(), platform.release())
 print("Python:", sys.version.split()[0])
+print("NumPy:", "Available" if HAS_NUMPY else "Not Available")
+print("psutil:", "Available" if HAS_PSUTIL else "Not Available")
 
 # System info
 sys_info = get_system_info()
 for key, value in sys_info.items():
     print(f"SYS_{key.upper()}:{value}")
 
-matrix_time = benchmark_matrix_multiplication()
-memory_time = benchmark_memory_access()
-cpu_result, cpu_time = benchmark_cpu_intensive()
-io_time = benchmark_io_operations()
+try:
+    matrix_time = benchmark_matrix_multiplication()
+    memory_time = benchmark_memory_access()
+    cpu_result, cpu_time = benchmark_cpu_intensive()
+    io_time = benchmark_io_operations()
 
-print(f"MATRIX_MULT_TIME:{matrix_time:.4f}")
-print(f"MEMORY_ACCESS_TIME:{memory_time:.4f}")
-print(f"CPU_INTENSIVE_TIME:{cpu_time:.4f}")
-print(f"IO_OPERATIONS_TIME:{io_time:.4f}")
-print(f"PYTHON_VERSION:{sys.version.split()[0]}")
-print("BENCHMARK_END")
+    print(f"MATRIX_MULT_TIME:{matrix_time:.4f}")
+    print(f"MEMORY_ACCESS_TIME:{memory_time:.4f}")
+    print(f"CPU_INTENSIVE_TIME:{cpu_time:.4f}")
+    print(f"IO_OPERATIONS_TIME:{io_time:.4f}")
+    print(f"PYTHON_VERSION:{sys.version.split()[0]}")
+    print("BENCHMARK_END")
+except Exception as e:
+    print(f"BENCHMARK_ERROR:{str(e)}")
+    print("BENCHMARK_END")
 `;
 
         const benchmarkFile = path.join(__dirname, 'temp', `benchmark_${Date.now()}.py`);
         fs.writeFileSync(benchmarkFile, benchmarkCode);
         
-        exec(`python3 "${benchmarkFile}"`, { timeout: 60000 }, (error, stdout, stderr) => {
+        exec(`${PYTHON_COMMAND} "${benchmarkFile}"`, { 
+            timeout: 60000,
+            env: { 
+                ...process.env, 
+                PYTHONIOENCODING: 'utf-8',
+                PYTHONUNBUFFERED: '1'
+            }
+        }, (error, stdout, stderr) => {
             const benchmarks = {
                 matrix_multiplication: { time: 0, score: 0, status: 'N/A' },
                 memory_access: { time: 0, score: 0, status: 'N/A' },
@@ -278,8 +371,10 @@ app.use(cors({
         'http://localhost:5173', 
         'http://localhost:3000', 
         'http://localhost:8080',
+        'http://localhost:8081',
         'http://127.0.0.1:5173',
-        'http://127.0.0.1:8080'
+        'http://127.0.0.1:8080',
+        'http://127.0.0.1:8081'
     ],
     credentials: true
 }));
@@ -347,17 +442,21 @@ app.post('/execute', (req, res) => {
         // Write code to temporary Python file
         fs.writeFileSync(tempFile, code, 'utf8');
         console.log('✅ Code written to temp file');
-        
-        const startTime = Date.now();
+          const startTime = Date.now();
         
         // Execute Python code
-        const command = `python3 "${tempFile}"`;
+        const command = `${PYTHON_COMMAND} "${tempFile}"`;
         console.log(`⚡ Running command: ${command}`);
         
         exec(command, { 
             timeout: 30000, // 30 seconds
             maxBuffer: 1024 * 1024, // 1MB buffer
-            cwd: __dirname
+            cwd: __dirname,
+            env: { 
+                ...process.env, 
+                PYTHONIOENCODING: 'utf-8',
+                PYTHONUNBUFFERED: '1'
+            }
         }, async (error, stdout, stderr) => {
             const endTime = Date.now();
             const executionTime = (endTime - startTime) / 1000;
@@ -507,21 +606,39 @@ app.post('/cleanup', (req, res) => {
     }
 });
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`🚀 Local Python Executor running on http://localhost:${PORT}`);
-    console.log(`📁 Temp directory: ${TEMP_DIR}`);
-    console.log(`📄 Results directory: ${RESULTS_DIR}`);
-    console.log('');
-    console.log('Available endpoints:');
-    console.log('  POST /execute - Execute Python code');
-    console.log('  GET  /result/:id - Get execution result');
-    console.log('  GET  /results - Get all recent results');
-    console.log('  GET  /health - Health check');
-    console.log('  POST /cleanup - Clean old files');
-    console.log('');
-    console.log('✅ Ready to execute Python code locally!');
-});
+// Start server with Python detection
+async function startServer() {
+    console.log('🔍 Checking Python availability...');
+    const pythonCheck = await checkPythonAvailability();
+    
+    if (!pythonCheck.available) {
+        console.error('❌ Python is not available on this system');
+        console.error('   Please install Python 3.x and make sure it\'s in your PATH');
+        process.exit(1);
+    }
+    
+    PYTHON_COMMAND = pythonCheck.command;
+    console.log(`✅ Python found: ${pythonCheck.version}`);
+    console.log(`🐍 Using command: ${PYTHON_COMMAND}`);
+    
+    app.listen(PORT, () => {
+        console.log(`🚀 Local Python Executor running on http://localhost:${PORT}`);
+        console.log(`📁 Temp directory: ${TEMP_DIR}`);
+        console.log(`📄 Results directory: ${RESULTS_DIR}`);
+        console.log('');
+        console.log('Available endpoints:');
+        console.log('  POST /execute - Execute Python code');
+        console.log('  GET  /result/:id - Get execution result');
+        console.log('  GET  /results - Get all recent results');
+        console.log('  GET  /health - Health check');
+        console.log('  POST /cleanup - Clean old files');
+        console.log('');
+        console.log('✅ Ready to execute Python code locally!');
+    });
+}
+
+// Start the server
+startServer();
 
 // Graceful shutdown
 process.on('SIGINT', () => {

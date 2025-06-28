@@ -18,14 +18,14 @@ export interface ExecutorConfig {
 
 // Default configuration - can be overridden by environment variables
 export const DEFAULT_EXECUTOR_CONFIG: ExecutorConfig = {
-  type: 'auto', // Will automatically detect which executor to use
+  type: (import.meta.env.VITE_EXECUTOR_TYPE as ExecutorType) || 'local', // Default to local for development
   hybridConfig: {
     taskQueueUrl: import.meta.env.VITE_TASK_QUEUE_URL || 'http://localhost:5000/tasks',
     resultQueueUrl: import.meta.env.VITE_RESULT_QUEUE_URL || 'http://localhost:5000/results',
     apiKey: import.meta.env.VITE_API_KEY || 'dev-api-key',
-    maxRetries: 3,
-    retryDelay: 2000,
-    pollInterval: 3000
+    maxRetries: import.meta.env.VITE_MAX_RETRIES ? Number(import.meta.env.VITE_MAX_RETRIES) : 3,
+    retryDelay: import.meta.env.VITE_RETRY_DELAY ? Number(import.meta.env.VITE_RETRY_DELAY) : 2000,
+    pollInterval: import.meta.env.VITE_POLL_INTERVAL ? Number(import.meta.env.VITE_POLL_INTERVAL) : 3000
   }
 };
 
@@ -34,9 +34,9 @@ export class ExecutorManager {
   private hybridExecutor: HybridSolVMExecutor | null = null;
   private config: ExecutorConfig;
   private currentExecutorType: ExecutorType = 'local';
-
   constructor(config: ExecutorConfig = DEFAULT_EXECUTOR_CONFIG) {
     this.config = config;
+    this.currentExecutorType = config.type; // Set to config type instead of defaulting to 'local'
     this.localExecutor = new LocalPythonExecutor();
     
     if (config.hybridConfig) {
@@ -114,11 +114,10 @@ export class ExecutorManager {
           type: this.currentExecutorType,
           timestamp: new Date().toISOString()
         }
-      };
-    } catch (error: any) {
+      };    } catch (error: any) {
       console.error(`❌ ${this.currentExecutorType} executor failed:`, error);
       
-      // If hybrid executor fails, try local as fallback
+      // If hybrid executor fails and we're in auto mode, try local as fallback
       if (this.currentExecutorType === 'hybrid' && this.config.type === 'auto') {
         console.log('🔄 Trying local executor as fallback...');
         this.currentExecutorType = 'local';
@@ -138,6 +137,11 @@ export class ExecutorManager {
         } catch (localError: any) {
           throw new Error(`Both executors failed. Hybrid: ${error.message}, Local: ${localError.message}`);
         }
+      }
+      
+      // For hybrid mode without fallback, provide SOL VM specific error
+      if (this.currentExecutorType === 'hybrid') {
+        throw new Error(`SOL VM execution failed: ${error.message}. Check if the SOL VM poller is running and the message queue API is accessible.`);
       }
       
       throw error;

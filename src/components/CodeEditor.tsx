@@ -13,44 +13,40 @@ interface CodeEditorProps {
 }
 
 const CodeEditor: React.FC<CodeEditorProps> = ({ onExecutionResult }) => {
-  const { updateMetrics, updateBenchmarks } = useSystemMetrics();
+  console.log('CodeEditor rendering...');
+  
+  // Safely get context with error handling
+  let updateMetrics, updateBenchmarks;
+  try {
+    const metricsContext = useSystemMetrics();
+    updateMetrics = metricsContext.updateMetrics;
+    updateBenchmarks = metricsContext.updateBenchmarks;
+  } catch (error) {
+    console.warn('SystemMetrics context not available:', error);
+    updateMetrics = () => {};
+    updateBenchmarks = () => {};
+  }
+  
   const [currentExecutor, setCurrentExecutor] = useState<ExecutorType>('local');
-  const [executorStatus, setExecutorStatus] = useState<any>(null);
-  const [code, setCode] = useState(`# Welcome to Python Execution!
-# This code can run locally or on SOL VM
-
-print("🚀 Hello from Python execution!")
-print("=" * 50)
-
-# Basic calculations
+  const [executorStatus, setExecutorStatus] = useState<any>(null);const [code, setCode] = useState(`print("*** Hello World from SOL VM! ***")
+print("=" * 40)
 x = 15
 y = 25
 result = x + y
 print(f"Calculation: {x} + {y} = {result}")
-
-# Working with data
 numbers = [1, 2, 3, 4, 5]
 squares = [n**2 for n in numbers]
 print(f"Numbers: {numbers}")
 print(f"Squares: {squares}")
-
-# Date and time
-import datetime
-current_time = datetime.datetime.now()
-print(f"Current time: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
-
-# Simple function
-def fibonacci(n):
-    if n <= 1:
-        return n
-    return fibonacci(n-1) + fibonacci(n-2)
-
-print("\\nFibonacci sequence:")
-for i in range(8):
-    print(f"F({i}) = {fibonacci(i)}")
-
-print("\\n✅ Execution completed successfully!")
-print("Check the Debug tab to see this output!")`);
+print("Counting:")
+for i in range(1, 6):
+    print(f"Count {i}")
+def greet(name):
+    return f"Hello, {name}!"
+print("Greetings:")
+print(greet("World"))
+print(greet("SOL VM"))
+print("[SUCCESS] Execution completed on SOL VM!")`);
 
   const [isExecuting, setIsExecuting] = useState(false);
 
@@ -148,23 +144,19 @@ print("Check the Debug tab to see this output!")`);
 
   const handleSubmit = () => {
     executeCode();
-  };
-
-  const handleRefresh = () => {
-    setCode(`# Python Execution Example
-print("Hello from Python execution!")
-
-# Basic calculations
+  };  const handleRefresh = () => {
+    setCode(`print("Hello World from SOL VM!")
 x = 10
 y = 20
 result = x + y
 print(f"{x} + {y} = {result}")
-
-# Loop example
-for i in range(5):
+print("Counting to 5:")
+for i in range(1, 6):
     print(f"Count: {i}")
-
-print("Ready for execution!")`);
+message = "SOL VM is awesome!"
+print(f"Message: {message}")
+print(f"Length: {len(message)} characters")
+print("Ready for SOL VM execution!")`);
   };
 
   const handleCopy = () => {

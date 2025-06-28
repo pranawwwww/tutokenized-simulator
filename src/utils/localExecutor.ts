@@ -67,11 +67,14 @@ export class LocalPythonExecutor {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = 'http://localhost:3001';
+    // Use environment variable or default to localhost:3001
+    this.baseUrl = import.meta.env.VITE_LOCAL_EXECUTOR_URL || 'http://localhost:3001';
   }
 
   async executeCode(code: string, timeout: number = 30): Promise<ExecutionResult> {
     try {
+      console.log('🚀 Executing code via local executor...');
+      
       const response = await fetch(`${this.baseUrl}/execute`, {
         method: 'POST',
         headers: {
@@ -88,15 +91,19 @@ export class LocalPythonExecutor {
       }
 
       const result = await response.json();
+      console.log('✅ Local execution completed:', result.success ? 'Success' : 'Failed');
+      
       return result;
       
     } catch (error: any) {
+      console.error('❌ Local executor service error:', error);
+      
       // Return error result if service is not available
       return {
         id: Date.now().toString(),
         success: false,
         output: '',
-        error: `Local executor service error: ${error.message}. Make sure to run './start-executor.sh' first.`,
+        error: `Local executor service error: ${error.message}. Make sure to run 'start-executor.bat' first.`,
         execution_time: 0,
         timestamp: new Date().toISOString(),
         code: code,

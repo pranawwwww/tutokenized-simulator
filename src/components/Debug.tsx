@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Terminal, Trash2, Copy, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Terminal, Trash2, Copy, CheckCircle, XCircle, Clock, Wifi } from 'lucide-react';
 
 interface DebugProps {
   executionResult?: any;
@@ -11,6 +11,37 @@ interface DebugProps {
 const Debug: React.FC<DebugProps> = ({ executionResult }) => {
   const [output, setOutput] = useState<string>('Ready for code execution...\n\nClick "Run Code" in the editor to see results here.');
   const [lastResult, setLastResult] = useState<any>(null);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+
+  // Test connection to local executor
+  const testConnection = async () => {
+    setIsTestingConnection(true);
+    try {
+      const response = await fetch('http://localhost:3001/health');
+      if (response.ok) {
+        const data = await response.json();
+        const testOutput = `[${new Date().toLocaleTimeString()}] ✅ Connection Test Successful\n` +
+          `Service: ${data.service}\n` +
+          `Status: ${data.status}\n` +
+          `Uptime: ${Math.round(data.uptime)}s\n` +
+          '─'.repeat(50) + '\n\n';
+        setOutput(testOutput + output);
+      } else {
+        throw new Error(`HTTP ${response.status}`);
+      }
+    } catch (error: any) {
+      const errorOutput = `[${new Date().toLocaleTimeString()}] ❌ Connection Test Failed\n` +
+        `Error: ${error.message}\n\n` +
+        `🔧 To fix this:\n` +
+        `1. Run "start-executor.bat" from the project folder\n` +
+        `2. Wait for the service to start on http://localhost:3001\n` +
+        `3. Click "Test Connection" again\n` +
+        '─'.repeat(50) + '\n\n';
+      setOutput(errorOutput + output);
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
 
   // Update output when execution result changes
   useEffect(() => {
@@ -26,12 +57,24 @@ const Debug: React.FC<DebugProps> = ({ executionResult }) => {
         newOutput += `✅ Execution completed in ${executionResult.execution_time.toFixed(2)}s\n`;
         newOutput += '─'.repeat(50) + '\n';
         newOutput += 'OUTPUT:\n';
-        newOutput += executionResult.output || '(No output)';
-      } else {
+        newOutput += executionResult.output || '(No output)';      } else {
         newOutput += `❌ Execution failed in ${executionResult.execution_time.toFixed(2)}s\n`;
         newOutput += '─'.repeat(50) + '\n';
         newOutput += 'ERROR:\n';
-        newOutput += executionResult.error || 'Unknown error';
+        
+        // Provide helpful error messages for common issues
+        const errorMessage = executionResult.error || 'Unknown error';
+        if (errorMessage.includes('Failed to fetch') || errorMessage.includes('fetch')) {
+          newOutput += '🔧 CONNECTION ERROR:\n';
+          newOutput += 'The local executor service is not running.\n\n';
+          newOutput += 'To fix this:\n';
+          newOutput += '1. Run "start-executor.bat" from the project folder\n';
+          newOutput += '2. Or run "quick-start.bat" to start everything\n';
+          newOutput += '3. Wait for the service to start on http://localhost:3001\n\n';
+          newOutput += 'Original error: ' + errorMessage;
+        } else {
+          newOutput += errorMessage;
+        }
       }
       
       newOutput += '\n' + '═'.repeat(50) + '\n\n';
@@ -78,7 +121,16 @@ const Debug: React.FC<DebugProps> = ({ executionResult }) => {
                     {lastResult.execution_time.toFixed(2)}s
                   </span>
                 </div>
-              )}
+              )}              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={testConnection}
+                disabled={isTestingConnection}
+                className="text-xs"
+              >
+                <Wifi className="w-3 h-3 mr-1" />
+                {isTestingConnection ? 'Testing...' : 'Test Connection'}
+              </Button>
               <Button 
                 size="sm" 
                 variant="outline" 
