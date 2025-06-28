@@ -25,6 +25,11 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Construct GIF URL if not provided but filename is available
+  const actualGifUrl = gifUrl || (gifFilename ? `http://localhost:3001/gifs/${gifFilename}` : null);
+
+  console.log('🎞️ GifPlayer props:', { gifUrl, gifFilename, actualGifUrl, frameCount, fps });
+
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -34,10 +39,10 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
   };
 
   const downloadGif = () => {
-    if (!gifUrl) return;
+    if (!actualGifUrl) return;
     
     const link = document.createElement('a');
-    link.href = gifUrl;
+    link.href = actualGifUrl;
     link.download = gifFilename || 'warp_simulation.gif';
     document.body.appendChild(link);
     link.click();
@@ -48,7 +53,7 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
     setIsFullscreen(!isFullscreen);
   };
 
-  if (!gifUrl) {
+  if (!actualGifUrl) {
     return (
       <Card className="bg-gradient-to-br from-slate-900/90 to-purple-900/90 backdrop-blur-xl border border-white/20">
         <CardContent className="p-8">
@@ -110,7 +115,7 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
               style={{ aspectRatio: `${resolution[0]}/${resolution[1]}` }}
             >
               <img
-                src={gifUrl}
+                src={actualGifUrl}
                 alt="WARP Volume Animation"
                 className="max-w-full max-h-full object-contain rounded"
                 style={{ imageRendering: 'crisp-edges' }}

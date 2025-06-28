@@ -54,7 +54,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
                         executionResult.video_data.frames.length > 0;
 
   const hasGifData = executionResult?.video_data?.type === 'gif_animation' && 
-                    executionResult?.video_data?.gif_url;
+                    (executionResult?.video_data?.gif_url || executionResult?.video_data?.gif_filename);
 
   const videoData = executionResult?.video_data;
   const frames = videoData?.frames || [];
@@ -68,7 +68,9 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
     fps,
     resolution,
     executionSuccess: executionResult?.success,
-    videoDataType: videoData?.type
+    videoDataType: videoData?.type,
+    videoDataKeys: videoData ? Object.keys(videoData) : [],
+    fullVideoData: videoData
   });
 
   // If we have GIF data, use the GifPlayer
