@@ -165,7 +165,7 @@ def frame_to_base64_jpeg(frame_array):
     try:
         # Convert to uint8
         if frame_array.dtype != np.uint8:
-            frame_uint8 = (frame_data * 255).astype(np.uint8)
+            frame_uint8 = (frame_array * 255).astype(np.uint8)
         else:
             frame_uint8 = frame_array
         

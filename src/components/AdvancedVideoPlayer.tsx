@@ -66,14 +66,18 @@ const AdvancedVideoPlayer: React.FC<AdvancedVideoPlayerProps> = ({
     if (frame && frame.image) {
       const img = new Image();
       img.onload = () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx?.clearRect(0, 0, canvas.width, canvas.height);
-        ctx?.drawImage(img, 0, 0);
+        // Set canvas size to match the expected resolution
+        const [expectedWidth, expectedHeight] = resolution;
+        canvas.width = expectedWidth;
+        canvas.height = expectedHeight;
+        
+        // Clear and draw the frame
+        ctx?.clearRect(0, 0, expectedWidth, expectedHeight);
+        ctx?.drawImage(img, 0, 0, expectedWidth, expectedHeight);
       };
       img.src = `data:image/jpeg;base64,${frame.image}`;
     }
-  }, [frames]);
+  }, [frames, resolution]);
 
   // Animation loop for playback
   const animate = useCallback((timestamp: number) => {
@@ -131,6 +135,13 @@ const AdvancedVideoPlayer: React.FC<AdvancedVideoPlayerProps> = ({
   useEffect(() => {
     drawFrame(currentFrame);
   }, [currentFrame, drawFrame]);
+
+  // Draw first frame when component loads
+  useEffect(() => {
+    if (frames.length > 0 && isLoaded) {
+      drawFrame(0);
+    }
+  }, [isLoaded, frames.length, drawFrame]);
 
   // Control functions
   const togglePlayPause = () => {
@@ -303,13 +314,25 @@ const AdvancedVideoPlayer: React.FC<AdvancedVideoPlayerProps> = ({
         
         <CardContent className="p-0">
           <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-b-lg overflow-hidden">
-            {/* Video Canvas */}
-            <div className="aspect-video flex items-center justify-center relative">
+            {/* Video Canvas Container */}
+            <div className="relative w-full" style={{ aspectRatio: `${resolution[0]}/${resolution[1]}` }}>
               <canvas
                 ref={canvasRef}
-                className="max-w-full max-h-full object-contain"
+                className="absolute inset-0 w-full h-full object-contain"
                 style={{ imageRendering: 'crisp-edges' }}
+                width={resolution[0]}
+                height={resolution[1]}
               />
+              
+              {/* Loading indicator */}
+              {!isLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-900/50">
+                  <div className="text-white text-center">
+                    <div className="animate-spin w-8 h-8 border-2 border-white border-t-transparent rounded-full mx-auto mb-2"></div>
+                    <p>Loading video frames...</p>
+                  </div>
+                </div>
+              )}
             </div>
             
             {/* Controls Overlay */}

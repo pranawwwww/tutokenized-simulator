@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Play, Pause, RotateCcw, Volume2, Maximize2 } from 'lucide-react';
-import AdvancedVideoPlayer from './AdvancedVideoPlayer';
+import SimpleVideoPlayer from './SimpleVideoPlayer';
 
 interface VideoSimulationProps {
   executionResult?: {
@@ -30,6 +30,18 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration] = useState(120); // 2 minutes fallback
+
+  // Debug logging
+  useEffect(() => {
+    console.log('🎬 VideoSimulation received executionResult:', {
+      hasResult: !!executionResult,
+      success: executionResult?.success,
+      hasVideoData: !!executionResult?.video_data,
+      videoDataType: executionResult?.video_data?.type,
+      frameCount: executionResult?.video_data?.frames?.length,
+      outputLength: executionResult?.output?.length
+    });
+  }, [executionResult]);
 
   // Check if we have video frame data
   const hasVideoFrames = executionResult?.video_data?.type === 'video_frames' && 
@@ -61,7 +73,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
                 {frames.length} frames
               </Badge>
             </h3>
-            <AdvancedVideoPlayer 
+            <SimpleVideoPlayer 
               frames={frames}
               fps={fps}
               resolution={resolution}
