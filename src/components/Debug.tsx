@@ -76,17 +76,6 @@ const Debug: React.FC<DebugProps> = ({ executionResult }) => {
         } else {
           newOutput += errorMessage;
         }
-        
-        // Add debug information if available
-        if (executionResult.debug) {
-          newOutput += '\n\n' + '─'.repeat(30) + '\n';
-          newOutput += 'DEBUG INFORMATION:\n';
-          newOutput += `Command: ${executionResult.debug.command || 'N/A'}\n`;
-          newOutput += `Python Command: ${executionResult.debug.pythonCommand || 'N/A'}\n`;
-          newOutput += `Temp File: ${executionResult.debug.tempFile || 'N/A'}\n`;
-          newOutput += `Has Video Output: ${executionResult.debug.hasVideoOutput || false}\n`;
-          newOutput += `Video Frame Count: ${executionResult.debug.videoFrameCount || 0}\n`;
-        }
       }
       
       newOutput += '\n' + '═'.repeat(50) + '\n\n';

@@ -120,51 +120,18 @@ export class HybridSolVMExecutor {
     };
 
     try {
-      console.log('Starting SOL VM execution:', {
-        taskId: taskId,
-        codeLength: code.length,
-        timeout: timeout,
-        taskQueueUrl: this.taskQueueUrl,
-        resultQueueUrl: this.resultQueueUrl
-      });
-      
-      // Test connectivity first
-      await this.testConnectivity();
-      
       // Submit task to the queue
       await this.submitTask(task);
       
       // Start polling for result
-      const result = await this.pollForResult(taskId, timeout + 10); // Add buffer time
-      
-      console.log('SOL VM execution completed:', {
-        taskId: taskId,
-        success: result.success,
-        hasVideoOutput: !!(result as any).video_data
-      });
-      
-      return result;
+      return await this.pollForResult(taskId, timeout + 10); // Add buffer time
       
     } catch (error: any) {
-      console.error('SOL VM execution failed:', error);
-      
-      // Handle different types of errors properly
-      let errorMessage = 'Unknown error occurred';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (error instanceof Event) {
-        errorMessage = `Network error: ${error.type || 'Connection failed'} - Check your internet connection and SOL VM queue service`;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error && error.toString && typeof error.toString === 'function') {
-        errorMessage = error.toString();
-      }
-      
       return {
         id: taskId,
         success: false,
         output: '',
-        error: `SOL VM execution failed: ${errorMessage}`,
+        error: `Failed to submit task or get result: ${error.message}`,
         execution_time: 0,
         timestamp: new Date().toISOString(),
         code: code,
@@ -181,57 +148,19 @@ export class HybridSolVMExecutor {
    * Submit task to the message queue
    */
   private async submitTask(task: TaskSubmission): Promise<void> {
-    try {
-      const apiKey = import.meta.env.VITE_API_KEY || 'dev-api-key';
-      
-      console.log('Submitting task to SOL VM queue:', {
-        taskId: task.id,
-        taskQueueUrl: this.taskQueueUrl,
-        hasApiKey: !!apiKey
-      });
-      
-      const response = await fetch(this.taskQueueUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify(task)
-      });
+    const apiKey = import.meta.env.VITE_API_KEY || 'dev-api-key';
+    
+    const response = await fetch(this.taskQueueUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(task)
+    });
 
-      if (!response.ok) {
-        let errorText = '';
-        try {
-          errorText = await response.text();
-        } catch (e) {
-          errorText = 'Unable to read error response';
-        }
-        
-        console.error('Task submission failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText
-        });
-        throw new Error(`Failed to submit task to SOL VM: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-      
-      console.log('Task submitted successfully to SOL VM queue');
-    } catch (error: any) {
-      console.error('Error submitting task to SOL VM:', error);
-      
-      // Handle different types of errors
-      let errorMessage = 'Unknown error';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (error instanceof Event) {
-        errorMessage = `Network error: ${error.type || 'Connection failed'}`;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error && error.toString) {
-        errorMessage = error.toString();
-      }
-      
-      throw new Error(`Failed to submit task to SOL VM: ${errorMessage}`);
+    if (!response.ok) {
+      throw new Error(`Failed to submit task: ${response.status} ${response.statusText}`);
     }
   }
 
@@ -399,32 +328,6 @@ export class HybridSolVMExecutor {
 
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  /**
-   * Test connectivity to SOL VM queue service
-   */
-  private async testConnectivity(): Promise<void> {
-    try {
-      console.log('Testing connectivity to SOL VM queue service...');
-      
-      const testUrl = this.taskQueueUrl.replace('/tasks', '/health') || this.taskQueueUrl;
-      const response = await fetch(testUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      console.log('Connectivity test result:', {
-        url: testUrl,
-        status: response.status,
-        ok: response.ok
-      });
-      
-    } catch (error) {
-      console.warn('Connectivity test failed (but continuing anyway):', error);
-    }
   }
 }
 

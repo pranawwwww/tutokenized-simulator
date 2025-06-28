@@ -60,8 +60,6 @@ export interface ExecutionResult {
     platform?: string;
     node_version?: string;
     python_command?: string;
-    executor_url?: string;
-    error_type?: string;
   };
 }
 
@@ -111,100 +109,6 @@ export class LocalPythonExecutor {
         code: code,
         system_info: {
           platform: navigator.platform
-        }
-      };
-    }
-  }
-
-  async executeCodeWithStreaming(
-    code: string, 
-    onStreamData: (data: any) => void,
-    timeout: number = 60
-  ): Promise<ExecutionResult> {
-    try {
-      console.log('🚀 Executing code with streaming via local executor...');
-      
-      // First establish WebSocket connection
-      const wsUrl = this.baseUrl.replace('http', 'ws');
-      const ws = new WebSocket(wsUrl);
-      
-      return new Promise((resolve, reject) => {
-        let executionResult: ExecutionResult | null = null;
-        
-        ws.onopen = () => {
-          console.log('🔗 WebSocket connected for streaming');
-          
-          // Start execution via HTTP
-          fetch(`${this.baseUrl}/execute-stream`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              code: code,
-              timeout: timeout
-            }),
-          })
-          .then(response => response.json())
-          .then(result => {
-            executionResult = result;
-            console.log('✅ Streaming execution completed');
-          })
-          .catch(error => {
-            console.error('❌ Streaming execution failed:', error);
-            reject(error);
-          });
-        };
-        
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            console.log('📡 Received streaming data:', data.type);
-            onStreamData(data);
-          } catch (error) {
-            console.warn('⚠️ Failed to parse streaming data:', error);
-          }
-        };
-        
-        ws.onclose = () => {
-          console.log('🔌 WebSocket disconnected');
-          if (executionResult) {
-            resolve(executionResult);
-          } else {
-            reject(new Error('WebSocket closed before execution completed'));
-          }
-        };
-        
-        ws.onerror = (error) => {
-          console.error('❌ WebSocket error:', error);
-          reject(error);
-        };
-        
-        // Timeout handler
-        setTimeout(() => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.close();
-            reject(new Error('Streaming execution timeout'));
-          }
-        }, timeout * 1000);
-      });
-      
-    } catch (error: any) {
-      console.error('❌ Streaming executor service error:', error);
-      
-      // Return error result if service is not available
-      return {
-        id: Date.now().toString(),
-        success: false,
-        output: '',
-        error: `Streaming executor service error: ${error.message}. Make sure to run 'start-executor.bat' first.`,
-        execution_time: 0,
-        timestamp: new Date().toISOString(),
-        code: code,
-        system_info: {
-          platform: 'unknown',
-          executor_url: this.baseUrl,
-          error_type: 'streaming_service_error'
         }
       };
     }

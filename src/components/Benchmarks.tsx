@@ -6,75 +6,40 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Zap, Clock, BarChart3 } from 'lucide-react';
 import { useSystemMetrics } from '@/contexts/SystemMetricsContext';
 
-interface BenchmarksProps {
-  streamBenchmarks?: {
-    warp_volume_simulation?: {
-      score: number;
-      status: string;
-      time: number;
-      avg_fps: number;
-      avg_frame_ms: number;
-      avg_kernel_ms: number;
-      avg_vertices: number;
-      avg_triangles: number;
-      total_frames: number;
-    };
-  };
-  plotImage?: string;
-}
-
-const Benchmarks: React.FC<BenchmarksProps> = ({ streamBenchmarks, plotImage }) => {
+const Benchmarks = () => {
   const { benchmarks, metrics } = useSystemMetrics();
-
-  // Use streaming benchmarks if available, otherwise fall back to system benchmarks
-  const activeBenchmarks = streamBenchmarks || benchmarks;
 
   // Create benchmark data from real results or fallback to static data
   const benchmarkData = [
-    // WARP Volume Simulation (if available)
-    ...(streamBenchmarks?.warp_volume_simulation ? [{
-      name: "WARP Volume Simulation", 
-      score: streamBenchmarks.warp_volume_simulation.score, 
-      progress: Math.min(streamBenchmarks.warp_volume_simulation.score / 100, 100), 
-      status: streamBenchmarks.warp_volume_simulation.status,
-      time: streamBenchmarks.warp_volume_simulation.time,
-      details: {
-        fps: streamBenchmarks.warp_volume_simulation.avg_fps,
-        frame_ms: streamBenchmarks.warp_volume_simulation.avg_frame_ms,
-        kernel_ms: streamBenchmarks.warp_volume_simulation.avg_kernel_ms,
-        vertices: streamBenchmarks.warp_volume_simulation.avg_vertices,
-        triangles: streamBenchmarks.warp_volume_simulation.avg_triangles,
-        total_frames: streamBenchmarks.warp_volume_simulation.total_frames
-      }
-    }] : []),
     { 
       name: "Matrix Multiplication", 
-      score: (benchmarks as any)?.matrix_multiplication?.score ?? 8950, 
-      progress: Math.min(((benchmarks as any)?.matrix_multiplication?.score ?? 8950) / 100, 100), 
-      status: (benchmarks as any)?.matrix_multiplication?.status ?? "Excellent",
-      time: (benchmarks as any)?.matrix_multiplication?.time ?? 0
+      score: benchmarks?.matrix_multiplication.score ?? 8950, 
+      progress: Math.min((benchmarks?.matrix_multiplication.score ?? 8950) / 100, 100), 
+      status: benchmarks?.matrix_multiplication.status ?? "Excellent",
+      time: benchmarks?.matrix_multiplication.time ?? 0
     },
     { 
       name: "Memory Access Pattern", 
-      score: (benchmarks as any)?.memory_access?.score ?? 7240, 
-      progress: Math.min(((benchmarks as any)?.memory_access?.score ?? 7240) / 100, 100), 
-      status: (benchmarks as any)?.memory_access?.status ?? "Good",
-      time: (benchmarks as any)?.memory_access?.time ?? 0
+      score: benchmarks?.memory_access.score ?? 7240, 
+      progress: Math.min((benchmarks?.memory_access.score ?? 7240) / 100, 100), 
+      status: benchmarks?.memory_access.status ?? "Good",
+      time: benchmarks?.memory_access.time ?? 0
     },
     { 
       name: "CPU Intensive Operations", 
-      score: (benchmarks as any)?.cpu_intensive?.score ?? 9100, 
-      progress: Math.min(((benchmarks as any)?.cpu_intensive?.score ?? 9100) / 100, 100), 
-      status: (benchmarks as any)?.cpu_intensive?.status ?? "Excellent",
-      time: (benchmarks as any)?.cpu_intensive?.time ?? 0
+      score: benchmarks?.cpu_intensive.score ?? 9100, 
+      progress: Math.min((benchmarks?.cpu_intensive.score ?? 9100) / 100, 100), 
+      status: benchmarks?.cpu_intensive.status ?? "Excellent",
+      time: benchmarks?.cpu_intensive.time ?? 0
     },
     { 
       name: "I/O Operations", 
-      score: (benchmarks as any)?.io_operations?.score ?? 6800, 
-      progress: Math.min(((benchmarks as any)?.io_operations?.score ?? 6800) / 100, 100), 
-      status: (benchmarks as any)?.io_operations?.status ?? "Average",
-      time: (benchmarks as any)?.io_operations?.time ?? 0
-    }
+      score: benchmarks?.io_operations?.score ?? 6800, 
+      progress: Math.min((benchmarks?.io_operations?.score ?? 6800) / 100, 100), 
+      status: benchmarks?.io_operations?.status ?? "Average",
+      time: benchmarks?.io_operations?.time ?? 0
+    },
+    { name: "Memory Bandwidth", score: 7950, progress: 79, status: "Good", time: 0 },
   ];
 
   // Calculate overall metrics
@@ -163,53 +128,6 @@ const Benchmarks: React.FC<BenchmarksProps> = ({ streamBenchmarks, plotImage }) 
             </div>
           ))}
         </div>
-
-        {/* WARP Performance Plots */}
-        {plotImage && (
-          <div className="mt-6">
-            <h4 className="font-medium text-gray-800 mb-4 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5" />
-              WARP Performance Analysis
-            </h4>
-            <div className="bg-white rounded-lg border p-4">
-              <img 
-                src={`data:image/png;base64,${plotImage}`}
-                alt="WARP Performance Metrics"
-                className="w-full h-auto max-w-4xl mx-auto rounded-lg shadow-sm"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* WARP Detailed Metrics */}
-        {streamBenchmarks?.warp_volume_simulation && (
-          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-blue-50 p-3 rounded-lg">
-              <div className="text-sm font-medium text-blue-800">Average FPS</div>
-              <div className="text-lg font-bold text-blue-900">
-                {streamBenchmarks.warp_volume_simulation.avg_fps.toFixed(1)}
-              </div>
-            </div>
-            <div className="bg-green-50 p-3 rounded-lg">
-              <div className="text-sm font-medium text-green-800">Frame Time</div>
-              <div className="text-lg font-bold text-green-900">
-                {streamBenchmarks.warp_volume_simulation.avg_frame_ms.toFixed(1)}ms
-              </div>
-            </div>
-            <div className="bg-purple-50 p-3 rounded-lg">
-              <div className="text-sm font-medium text-purple-800">GPU Kernel</div>
-              <div className="text-lg font-bold text-purple-900">
-                {streamBenchmarks.warp_volume_simulation.avg_kernel_ms.toFixed(1)}ms
-              </div>
-            </div>
-            <div className="bg-orange-50 p-3 rounded-lg">
-              <div className="text-sm font-medium text-orange-800">Total Frames</div>
-              <div className="text-lg font-bold text-orange-900">
-                {streamBenchmarks.warp_volume_simulation.total_frames.toLocaleString()}
-              </div>
-            </div>
-          </div>
-        )}
 
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <h4 className="font-medium text-gray-800 mb-2">System Configuration</h4>

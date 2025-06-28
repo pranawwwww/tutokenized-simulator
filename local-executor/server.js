@@ -2,11 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-const { exec, spawn } = require('child_process');
+const { exec } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
 const os = require('os');
-const http = require('http');
-const WebSocket = require('ws');
 
 // Function to get the correct Python command for the current platform
 function getPythonCommand() {
@@ -572,250 +570,6 @@ async function checkForVideoFiles() {
     return videoData;
 }
 
-// Create HTTP server and WebSocket server for streaming
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
-
-// WebSocket connections for streaming
-const activeStreams = new Map();
-
-wss.on('connection', (ws) => {
-    const connectionId = uuidv4();
-    console.log(`🔌 WebSocket connected: ${connectionId}`);
-    
-    ws.on('message', (message) => {
-        try {
-            const data = JSON.parse(message);
-            if (data.type === 'subscribe_stream' && data.executionId) {
-                activeStreams.set(data.executionId, ws);
-                console.log(`📡 Subscribed to stream: ${data.executionId}`);
-            }
-        } catch (error) {
-            console.error('WebSocket message error:', error);
-        }
-    });
-    
-    ws.on('close', () => {
-        console.log(`🔌 WebSocket disconnected: ${connectionId}`);
-        // Remove from active streams
-        for (const [key, value] of activeStreams.entries()) {
-            if (value === ws) {
-                activeStreams.delete(key);
-                break;
-            }
-        }
-    });
-});
-
-// Function to broadcast stream data
-function broadcastStreamData(executionId, data) {
-    const ws = activeStreams.get(executionId);
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        try {
-            ws.send(JSON.stringify(data));
-        } catch (error) {
-            console.error('Error broadcasting stream data:', error);
-            activeStreams.delete(executionId);
-        }
-    }
-}
-
-// Enhanced execute endpoint with streaming support
-app.post('/execute-stream', (req, res) => {
-    const { code } = req.body;
-    
-    console.log('📝 Streaming code execution requested');
-    
-    if (!code || typeof code !== 'string' || !code.trim()) {
-        console.log('❌ No valid code provided');
-        return res.status(400).json({
-            success: false,
-            error: 'No code provided or invalid code format',
-            execution_time: 0,
-            timestamp: new Date().toISOString()
-        });
-    }
-
-    const executionId = uuidv4();
-    const tempFile = path.join(TEMP_DIR, `execution_${executionId}.py`);
-    const resultFile = path.join(RESULTS_DIR, `result_${executionId}.json`);
-    
-    console.log(`🚀 Executing streaming code with ID: ${executionId}`);
-    console.log(`📄 Temp file: ${tempFile}`);
-    
-    // Send immediate response with execution ID
-    res.json({
-        success: true,
-        executionId: executionId,
-        message: 'Execution started, connect to WebSocket for streaming data'
-    });
-    
-    try {
-        // Write code to temporary Python file
-        fs.writeFileSync(tempFile, code, 'utf8');
-        console.log('✅ Code written to temp file');
-        
-        const startTime = Date.now();
-        
-        // Use spawn for streaming output
-        const pythonProcess = spawn(PYTHON_COMMAND, [tempFile], {
-            cwd: __dirname,
-            env: { 
-                ...process.env, 
-                PYTHONIOENCODING: 'utf-8',
-                PYTHONUNBUFFERED: '1'
-            }
-        });
-        
-        let stdout = '';
-        let stderr = '';
-        let streamData = {
-            frames: [],
-            benchmarks: null,
-            plots: [],
-            status: 'running'
-        };
-        
-        // Process stdout line by line for streaming
-        pythonProcess.stdout.on('data', (data) => {
-            const output = data.toString();
-            stdout += output;
-            
-            // Parse streaming data from Python output
-            const lines = output.split('\n');
-            lines.forEach(line => {
-                try {
-                    if (line.startsWith('STREAM_DATA:')) {
-                        const frameData = JSON.parse(line.substring(12));
-                        streamData.frames.push(frameData);
-                        
-                        // Broadcast frame data
-                        broadcastStreamData(executionId, {
-                            type: 'frame_data',
-                            data: frameData
-                        });
-                    } else if (line.startsWith('BENCHMARK_DATA:')) {
-                        const benchmarkData = JSON.parse(line.substring(15));
-                        streamData.benchmarks = benchmarkData;
-                        
-                        // Broadcast benchmark data
-                        broadcastStreamData(executionId, {
-                            type: 'benchmark_data',
-                            data: benchmarkData
-                        });
-                    } else if (line.startsWith('PLOT_DATA:')) {
-                        const plotData = JSON.parse(line.substring(10));
-                        streamData.plots.push(plotData);
-                        
-                        // Broadcast plot data
-                        broadcastStreamData(executionId, {
-                            type: 'plot_data',
-                            data: plotData
-                        });
-                    } else if (line.startsWith('STATUS_DATA:')) {
-                        const statusData = JSON.parse(line.substring(12));
-                        
-                        // Broadcast status updates
-                        broadcastStreamData(executionId, {
-                            type: 'status_update',
-                            data: statusData
-                        });
-                    } else if (line.startsWith('VIDEO_DATA:')) {
-                        const videoData = JSON.parse(line.substring(11));
-                        
-                        // Broadcast video file info
-                        broadcastStreamData(executionId, {
-                            type: 'video_ready',
-                            data: videoData
-                        });
-                    }
-                } catch (parseError) {
-                    // Not streaming data, just regular output
-                }
-            });
-        });
-        
-        pythonProcess.stderr.on('data', (data) => {
-            stderr += data.toString();
-        });
-        
-        pythonProcess.on('close', async (code) => {
-            const endTime = Date.now();
-            const executionTime = (endTime - startTime) / 1000;
-            
-            console.log(`⏱️ Streaming execution completed in ${executionTime.toFixed(2)}s`);
-            
-            // Get system metrics
-            console.log('📊 Collecting system metrics...');
-            const systemMetrics = await getSystemMetrics();
-            
-            // Check for video output files
-            console.log('🎥 Checking for video output files...');
-            const videoData = await checkForVideoFiles();
-            
-            const result = {
-                id: executionId,
-                success: code === 0,
-                output: stdout,
-                error: code !== 0 ? stderr : '',
-                execution_time: executionTime,
-                timestamp: new Date().toISOString(),
-                code: code,
-                system_metrics: systemMetrics,
-                video_data: videoData,
-                stream_data: streamData
-            };
-            
-            // Broadcast completion
-            broadcastStreamData(executionId, {
-                type: 'execution_complete',
-                data: result
-            });
-            
-            // Save result to file
-            try {
-                fs.writeFileSync(resultFile, JSON.stringify(result, null, 2));
-                console.log('💾 Streaming result saved to file');
-            } catch (saveError) {
-                console.error('Failed to save streaming result:', saveError);
-            }
-            
-            // Clean up temp file
-            try {
-                if (fs.existsSync(tempFile)) {
-                    fs.unlinkSync(tempFile);
-                    console.log('🧹 Streaming temp file cleaned up');
-                }
-            } catch (cleanupError) {
-                console.warn('Failed to cleanup streaming temp file:', cleanupError);
-            }
-            
-            // Remove from active streams after a delay
-            setTimeout(() => {
-                activeStreams.delete(executionId);
-            }, 30000); // Keep connection open for 30 seconds after completion
-        });
-        
-    } catch (err) {
-        console.error('💥 Streaming execution error:', err);
-        
-        // Broadcast error
-        broadcastStreamData(executionId, {
-            type: 'execution_error',
-            data: { error: err.message }
-        });
-        
-        // Clean up on error
-        try {
-            if (fs.existsSync(tempFile)) {
-                fs.unlinkSync(tempFile);
-            }
-        } catch (cleanupError) {
-            console.error('Failed to cleanup on streaming error:', cleanupError);
-        }
-    }
-});
-
 // Execute Python code endpoint
 app.post('/execute', (req, res) => {
     const { code } = req.body;
@@ -850,8 +604,8 @@ app.post('/execute', (req, res) => {
         console.log(`⚡ Running command: ${command}`);
         
         exec(command, { 
-            timeout: 120000, // 2 minutes for complex simulations
-            maxBuffer: 10 * 1024 * 1024, // 10MB buffer for video data
+            timeout: 120000, // 2 minutes for video generation
+            maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large video data
             cwd: __dirname,
             env: { 
                 ...process.env, 
@@ -863,72 +617,27 @@ app.post('/execute', (req, res) => {
             const executionTime = (endTime - startTime) / 1000;
             
             console.log(`⏱️ Execution completed in ${executionTime.toFixed(2)}s`);
-            
-            // Enhanced error logging
-            if (error) {
-                console.error('❌ Execution Error Details:');
-                console.error('  Error Code:', error.code);
-                console.error('  Error Signal:', error.signal);
-                console.error('  Error Message:', error.message);
-                console.error('  Command:', error.cmd || command);
-                if (stderr) {
-                    console.error('  STDERR Output:');
-                    console.error('  ' + stderr.split('\n').join('\n  '));
-                }
-                if (stdout) {
-                    console.error('  STDOUT Output:');
-                    console.error('  ' + stdout.split('\n').join('\n  '));
-                }
-            }
-            
-            // Get system metrics
+              // Get system metrics
             console.log('📊 Collecting system metrics...');
             const systemMetrics = await getSystemMetrics();
             
-            // Check for video output files
+            // Check for video output files and parse VIDEO_OUTPUT from stdout
             console.log('🎥 Checking for video output files...');
             const videoData = await checkForVideoFiles();
             
-            // Parse VIDEO_OUTPUT from stdout
-            let videoOutput = null;
+            // Parse VIDEO_OUTPUT from stdout if present
             if (stdout && stdout.includes('VIDEO_OUTPUT:')) {
                 try {
                     const videoOutputMatch = stdout.match(/VIDEO_OUTPUT:(.+)/);
                     if (videoOutputMatch) {
-                        videoOutput = JSON.parse(videoOutputMatch[1]);
-                        console.log(`🎬 Parsed video output with ${videoOutput.frames?.length || 0} frames`);
+                        const videoOutputData = JSON.parse(videoOutputMatch[1]);
+                        console.log(`🎬 Found VIDEO_OUTPUT with ${videoOutputData.frames?.length || 0} frames`);
+                        Object.assign(videoData, videoOutputData);
                     }
                 } catch (parseError) {
-                    console.warn('⚠️ Failed to parse VIDEO_OUTPUT:', parseError.message);
+                    console.error('Failed to parse VIDEO_OUTPUT:', parseError);
                 }
             }
-            
-            // Combine video data
-            const combinedVideoData = {
-                ...videoData,
-                ...(videoOutput && videoOutput.type === 'gif' && {
-                    type: 'gif',
-                    gif_data: videoOutput.gif_data,
-                    fps: videoOutput.fps,
-                    resolution: videoOutput.resolution,
-                    frame_count: videoOutput.frame_count
-                }),
-                ...(videoOutput && videoOutput.type === 'frames' && { 
-                    type: 'frames',
-                    frames: videoOutput.frames,
-                    frame_count: videoOutput.frame_count || videoOutput.total_frames,
-                    fps: videoOutput.fps,
-                    resolution: videoOutput.resolution 
-                }),
-                // Legacy support for old format without type
-                ...(videoOutput && !videoOutput.type && videoOutput.frames && { 
-                    type: 'frames',
-                    frames: videoOutput.frames,
-                    frame_count: videoOutput.frame_count || videoOutput.total_frames,
-                    fps: videoOutput.fps,
-                    resolution: videoOutput.resolution 
-                })
-            };
             
             // Run benchmarks if execution was successful
             let benchmarks = null;
@@ -936,37 +645,19 @@ app.post('/execute', (req, res) => {
                 console.log('🏃 Running performance benchmarks...');
                 benchmarks = await runBenchmarks();
             }
-            
-            // Create detailed error message
-            let detailedError = '';
-            if (error) {
-                detailedError = `Execution failed: ${error.message}`;
-                if (error.code) detailedError += `\nError code: ${error.code}`;
-                if (error.signal) detailedError += `\nSignal: ${error.signal}`;
-                if (stderr) detailedError += `\nSTDERR:\n${stderr}`;
-                if (stdout) detailedError += `\nSTDOUT:\n${stdout}`;
-            }
-            
-            const result = {
+              const result = {
                 id: executionId,
                 success: !error,
                 output: stdout || '',
-                error: error ? detailedError : (stderr || ''),
+                error: error ? `${error.message}${stderr ? '\n' + stderr : ''}` : (stderr || ''),
                 execution_time: executionTime,
                 timestamp: new Date().toISOString(),
                 code: code,
                 system_metrics: systemMetrics,
                 benchmarks: benchmarks,
-                video_data: combinedVideoData,
+                video_data: videoData,
                 binary_outputs: {},
-                file_outputs: {},
-                debug: {
-                    command: command,
-                    tempFile: tempFile,
-                    hasVideoOutput: !!videoOutput,
-                    videoFrameCount: videoOutput?.frames?.length || 0,
-                    pythonCommand: PYTHON_COMMAND
-                }
+                file_outputs: {}
             };
             
             // Log the result
@@ -1104,22 +795,19 @@ async function startServer() {
     console.log(`✅ Python found: ${pythonCheck.version}`);
     console.log(`🐍 Using command: ${PYTHON_COMMAND}`);
     
-    server.listen(PORT, () => {
+    app.listen(PORT, () => {
         console.log(`🚀 Local Python Executor running on http://localhost:${PORT}`);
-        console.log(`� WebSocket server running on ws://localhost:${PORT}`);
-        console.log(`�📁 Temp directory: ${TEMP_DIR}`);
+        console.log(`📁 Temp directory: ${TEMP_DIR}`);
         console.log(`📄 Results directory: ${RESULTS_DIR}`);
         console.log('');
         console.log('Available endpoints:');
         console.log('  POST /execute - Execute Python code');
-        console.log('  POST /execute-stream - Execute Python code with streaming');
         console.log('  GET  /result/:id - Get execution result');
         console.log('  GET  /results - Get all recent results');
         console.log('  GET  /health - Health check');
         console.log('  POST /cleanup - Clean old files');
-        console.log('  WS   / - WebSocket for streaming data');
         console.log('');
-        console.log('✅ Ready to execute Python code locally with streaming!');
+        console.log('✅ Ready to execute Python code locally!');
     });
 }
 

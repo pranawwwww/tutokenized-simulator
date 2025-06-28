@@ -172,110 +172,40 @@ print("\\n💡 Uncomment the examples above to see real GPU acceleration!")`);
     try {
       // Import executorManager dynamically to avoid initialization issues
       const { executorManager } = await import('@/utils/executorManager');
+      // Detect if this is volume.py or other video generation code
+      const isVideoGeneration = code.includes('volume.py') || 
+                                code.includes('warp.render') || 
+                                code.includes('VIDEO_OUTPUT') ||
+                                code.includes('warp as wp');
       
-      // Check if this is old WARP code that needs streaming (not volume.py)
-      const needsStreaming = code.includes('STREAM_DATA') && !code.includes('VIDEO_OUTPUT');
+      const timeout = isVideoGeneration ? 120 : 30; // 2 minutes for video, 30s for others
       
-      if (needsStreaming) {
-        console.log('🎬 Detected WARP simulation code with streaming - using streaming execution');
-        
-        // Collect streaming data
-        const streamingData = {
-          frames: [] as any[],
-          benchmarks: {} as any,
-          plots: [] as string[],
-          status: 'running'
-        };
-        
-        const result = await executorManager.executeCodeWithStreaming(
-          code,
-          (data: any) => {
-            console.log('📡 Received stream data:', data);
-            
-            // Handle different types of streaming data
-            if (data.type === 'frame_data' && data.image && data.metrics) {
-              streamingData.frames.push({
-                frame: data.frame,
-                image: data.image,
-                metrics: data.metrics
-              });
-              console.log(`🎬 Added frame ${data.frame}, total frames: ${streamingData.frames.length}`);
-            } else if (data.type === 'benchmark_data') {
-              streamingData.benchmarks = data.benchmarks || data;
-              console.log('📊 Updated benchmark data:', streamingData.benchmarks);
-            } else if (data.type === 'benchmark_plot' && data.image) {
-              streamingData.plots.push(data.image);
-              console.log('📈 Added plot image');
-            } else if (data.type === 'simulation_complete') {
-              streamingData.status = 'complete';
-              console.log('✅ Simulation marked as complete');
-            }
-          },
-          120 // 2 minute timeout for WARP simulations
-        );
-        
-        // Add streaming data to result
-        const enhancedResult = {
+      const result = await executorManager.executeCode(code, timeout);
+      
+      console.log('Code execution result:', result);
+      
+      if (onExecutionResult) {
+        onExecutionResult({
           ...result,
           timestamp: new Date().toISOString(),
-          code: code,
-          streaming_data: streamingData,
-          is_streaming: true
-        };
-        
-        console.log('✅ WARP streaming execution completed:', enhancedResult);
-        console.log(`📊 Final streaming data - Frames: ${streamingData.frames.length}, Benchmarks:`, streamingData.benchmarks);
-        
-        if (onExecutionResult) {
-          onExecutionResult(enhancedResult);
-        }
-        
-      } else {
-        // Standard execution for volume.py and other code (uses configured executor)
-        console.log('🚀 Using standard execution with configured executor');
-        const result = await executorManager.executeCode(code);
-        
-        console.log('Code execution result:', result);
-        
-        if (onExecutionResult) {
-          onExecutionResult({
-            ...result,
-            timestamp: new Date().toISOString(),
-            code: code
-          });
-        }
+          code: code
+        });
       }
       
     } catch (error: any) {
       console.error('Code execution failed:', error);
-      
-      // Handle different types of errors properly
-      let errorMessage = 'Unknown error occurred during execution';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (error instanceof Event) {
-        errorMessage = `Network error: ${error.type || 'Connection failed'} - Check your internet connection and SOL VM service`;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error && error.toString && typeof error.toString === 'function') {
-        errorMessage = error.toString();
-      }
       
       if (onExecutionResult) {
         onExecutionResult({
           id: Date.now().toString(),
           success: false,
           output: '',
-          error: `Execution failed: ${errorMessage}`,
+          error: `Execution failed: ${error.message}`,
           execution_time: 0,
           timestamp: new Date().toISOString(),
           code: code,
           executor_type: currentExecutor,
-          system_info: {
-            error_details: error,
-            executor_config: 'SOL VM Queue-based execution',
-            error_type: typeof error
-          }
+          system_info: {}
         });
       }
     } finally {

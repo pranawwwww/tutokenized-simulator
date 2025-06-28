@@ -155,7 +155,7 @@ class SolVMPythonPoller:
         start_time = time.time()
         task_id = task['id']
         code = task['code']
-        timeout = task.get('timeout', 30)
+        timeout = task.get('timeout', 120)  # 2 minutes default for video generation
         
         try:
             # Update task status to running
@@ -163,6 +163,11 @@ class SolVMPythonPoller:
             
             # Execute the code
             execution_result = self._execute_python_code(code, timeout)
+            
+            # Parse video data from output if present
+            video_data = {}
+            if execution_result['success'] and execution_result['output']:
+                video_data = self._parse_video_output(execution_result['output'])
             
             execution_time = time.time() - start_time
             
@@ -178,7 +183,8 @@ class SolVMPythonPoller:
                 'vm_id': self.vm_id,
                 'vm_info': self._get_vm_info(),
                 'system_metrics': self._get_system_metrics(),
-                'benchmarks': execution_result.get('benchmarks')
+                'benchmarks': execution_result.get('benchmarks'),
+                'video_data': video_data
             }
             
         except Exception as e:
@@ -196,28 +202,6 @@ class SolVMPythonPoller:
                 'vm_id': self.vm_id,
                 'vm_info': self._get_vm_info()
             }
-
-    def _extract_video_data(self, stdout: str) -> Optional[Dict[str, Any]]:
-        """Extract VIDEO_OUTPUT data from stdout"""
-        try:
-            # Look for VIDEO_OUTPUT: prefix in stdout
-            for line in stdout.split('\n'):
-                if line.startswith('VIDEO_OUTPUT:'):
-                    video_json = line[len('VIDEO_OUTPUT:'):].strip()
-                    video_data = json.loads(video_json)
-                    
-                    # Log the type of video data found
-                    if video_data.get('type') == 'gif':
-                        print(f"🎬 Found GIF video output with {video_data.get('frame_count', 0)} frames")
-                    elif video_data.get('type') == 'frames' or video_data.get('frames'):
-                        frame_count = video_data.get('frame_count') or len(video_data.get('frames', []))
-                        print(f"🎬 Found frame-based video output with {frame_count} frames")
-                    
-                    return video_data
-            return None
-        except (json.JSONDecodeError, ValueError) as e:
-            print(f"⚠️ Failed to parse video data: {e}")
-            return None
 
     def _execute_python_code(self, code: str, timeout: int) -> Dict[str, Any]:
         """Execute Python code in a subprocess"""
@@ -241,8 +225,7 @@ class SolVMPythonPoller:
                     'success': result.returncode == 0,
                     'output': result.stdout,
                     'error': result.stderr,
-                    'return_code': result.returncode,
-                    'video_data': self._extract_video_data(result.stdout)  # Extract video data
+                    'return_code': result.returncode
                 }
                 
             finally:
@@ -506,7 +489,23 @@ class SolVMPythonPoller:
             'uptime': time.time() - psutil.boot_time() if hasattr(psutil, 'boot_time') else 0,
             'vm_info': self._get_vm_info()
         }
-
+    
+    def _parse_video_output(self, output: str) -> Dict[str, Any]:
+        """Parse VIDEO_OUTPUT from Python stdout"""
+        try:
+            if 'VIDEO_OUTPUT:' in output:
+                # Find the VIDEO_OUTPUT line
+                lines = output.split('\n')
+                for line in lines:
+                    if line.strip().startswith('VIDEO_OUTPUT:'):
+                        video_json = line.split('VIDEO_OUTPUT:', 1)[1].strip()
+                        video_data = json.loads(video_json)
+                        print(f"🎬 Parsed video data: {video_data.get('frame_count', 0)} frames")
+                        return video_data
+        except Exception as e:
+            print(f"Failed to parse VIDEO_OUTPUT: {e}")
+        
+        return {}
 
 def main():
     """Main entry point"""
