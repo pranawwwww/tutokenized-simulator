@@ -249,7 +249,17 @@ print("\\n💡 Uncomment the examples above to see real GPU acceleration!")`);
     } catch (error: any) {
       console.error('Code execution failed:', error);
       
-      const errorMessage = error?.message || error?.toString() || 'Unknown error occurred during execution';
+      // Handle different types of errors properly
+      let errorMessage = 'Unknown error occurred during execution';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (error instanceof Event) {
+        errorMessage = `Network error: ${error.type || 'Connection failed'} - Check your internet connection and SOL VM service`;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error && error.toString && typeof error.toString === 'function') {
+        errorMessage = error.toString();
+      }
       
       if (onExecutionResult) {
         onExecutionResult({
@@ -263,7 +273,8 @@ print("\\n💡 Uncomment the examples above to see real GPU acceleration!")`);
           executor_type: currentExecutor,
           system_info: {
             error_details: error,
-            executor_config: 'SOL VM Queue-based execution'
+            executor_config: 'SOL VM Queue-based execution',
+            error_type: typeof error
           }
         });
       }
