@@ -9,4 +9,4 @@ gunicorn>=21.2.0
 warp-lang
 matplotlib
 pyglet
-usd-core
+# usd-core
