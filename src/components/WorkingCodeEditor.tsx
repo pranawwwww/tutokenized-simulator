@@ -108,25 +108,31 @@ wp.synchronize()
 # Create GIF
 if gif_frames:
     print("Creating GIF...")
-    gif_buffer = io.BytesIO()
-    gif_frames[0].save(gif_buffer, format='GIF', save_all=True, 
+    import time
+    timestamp = int(time.time() * 1000)
+    gif_filename = f"warp_animation_{timestamp}.gif"
+    
+    gif_frames[0].save(gif_filename, format='GIF', save_all=True, 
                       append_images=gif_frames[1:], duration=int(1000/fps), 
                       loop=0, optimize=True)
     
-    gif_base64 = base64.b64encode(gif_buffer.getvalue()).decode('utf-8')
+    import os
+    gif_file_size = os.path.getsize(gif_filename)
     
     gif_output = {
         'type': 'gif_animation',
-        'gif_data': gif_base64,
+        'gif_file': gif_filename,
+        'gif_filename': gif_filename,
         'fps': fps,
         'resolution': resolution,
         'frame_count': len(gif_frames),
         'duration': len(gif_frames) / fps,
-        'file_size_bytes': len(gif_buffer.getvalue())
+        'file_size_bytes': gif_file_size
     }
     
     print(f"GIF_OUTPUT:{json.dumps(gif_output)}")
-    print(f"✅ GIF complete! {len(gif_frames)} frames, {len(gif_buffer.getvalue())} bytes")
+    print(f"✅ GIF complete! {len(gif_frames)} frames, {gif_file_size} bytes")
+    print(f"GIF saved as: {gif_filename}")
 
 # === ALTERNATIVE: Simple Test Pattern ===
 # Uncomment this for a basic test without WARP dependencies:
@@ -150,19 +156,27 @@ try:
         frames.append(Image.fromarray(frame))
     
     # Create GIF
-    gif_buffer = io.BytesIO()
-    frames[0].save(gif_buffer, format='GIF', save_all=True,
+    import time
+    timestamp = int(time.time() * 1000)
+    gif_filename = f"test_animation_{timestamp}.gif"
+    
+    frames[0].save(gif_filename, format='GIF', save_all=True,
                   append_images=frames[1:], duration=100, loop=0)
+    
+    import os
+    gif_file_size = os.path.getsize(gif_filename)
     
     gif_output = {
         'type': 'gif_animation',
-        'gif_data': base64.b64encode(gif_buffer.getvalue()).decode('utf-8'),
+        'gif_file': gif_filename,
+        'gif_filename': gif_filename,
         'fps': 10, 'resolution': [100, 100], 'frame_count': 10,
-        'duration': 1.0, 'file_size_bytes': len(gif_buffer.getvalue())
+        'duration': 1.0, 'file_size_bytes': gif_file_size
     }
     
     print(f"GIF_OUTPUT:{json.dumps(gif_output)}")
     print("✅ Test GIF created!")
+    print(f"GIF saved as: {gif_filename}")
     
 except ImportError:
     print("Install Pillow: pip install Pillow")

@@ -39,11 +39,14 @@ for i in range(num_frames):
 
 print(f"Generated {len(frames)} test frames")
 
-# Create GIF
-print("Creating GIF...")
-gif_buffer = io.BytesIO()
+# Save GIF to file
+import time
+import os
+timestamp = int(time.time() * 1000)
+gif_filename = f"simple_test_gif_{timestamp}.gif"
+
 frames[0].save(
-    gif_buffer,
+    gif_filename,
     format='GIF',
     save_all=True,
     append_images=frames[1:],
@@ -52,21 +55,23 @@ frames[0].save(
     optimize=True
 )
 
-# Convert to base64
-gif_base64 = base64.b64encode(gif_buffer.getvalue()).decode('utf-8')
+# Get file size
+gif_file_size = os.path.getsize(gif_filename)
 
 # Create output structure matching our backend expectations
 gif_output = {
     'type': 'gif_animation',
-    'gif_data': gif_base64,
+    'gif_file': gif_filename,
+    'gif_filename': gif_filename,
     'fps': 6,  # ~150ms per frame = 6.67 FPS
     'resolution': list(resolution),
     'frame_count': len(frames),
     'duration': len(frames) * 0.15,  # 150ms per frame
-    'file_size_bytes': len(gif_buffer.getvalue())
+    'file_size_bytes': gif_file_size
 }
 
 print(f"GIF_OUTPUT:{json.dumps(gif_output)}")
 print(f"✅ Test GIF created successfully!")
-print(f"📊 {len(frames)} frames, {len(gif_buffer.getvalue())} bytes")
+print(f"📊 {len(frames)} frames, {gif_file_size} bytes")
+print(f"📁 GIF saved as: {gif_filename}")
 print("🎞️ This should display as an animated GIF in the UI!")

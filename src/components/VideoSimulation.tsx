@@ -24,7 +24,8 @@ interface VideoSimulationProps {
       frame_count?: number;
       duration?: number;
       // GIF-specific data
-      gif_data?: string;
+      gif_url?: string;
+      gif_filename?: string;
       file_size_bytes?: number;
     };
   };
@@ -53,7 +54,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
                         executionResult.video_data.frames.length > 0;
 
   const hasGifData = executionResult?.video_data?.type === 'gif_animation' && 
-                    executionResult?.video_data?.gif_data;
+                    executionResult?.video_data?.gif_url;
 
   const videoData = executionResult?.video_data;
   const frames = videoData?.frames || [];
@@ -83,7 +84,8 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
               </Badge>
             </h3>
             <GifPlayer 
-              gifData={videoData?.gif_data}
+              gifUrl={videoData?.gif_url}
+              gifFilename={videoData?.gif_filename}
               fps={fps}
               resolution={resolution}
               frameCount={videoData?.frame_count}

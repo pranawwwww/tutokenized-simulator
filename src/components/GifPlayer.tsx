@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Download, RefreshCw, Maximize2, Play } from 'lucide-react';
 
 interface GifPlayerProps {
-  gifData?: string;
+  gifUrl?: string;
+  gifFilename?: string;
   fps?: number;
   resolution?: [number, number];
   frameCount?: number;
@@ -14,7 +15,8 @@ interface GifPlayerProps {
 }
 
 const GifPlayer: React.FC<GifPlayerProps> = ({ 
-  gifData, 
+  gifUrl,
+  gifFilename, 
   fps = 10, 
   resolution = [400, 300], 
   frameCount = 0,
@@ -32,11 +34,11 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
   };
 
   const downloadGif = () => {
-    if (!gifData) return;
+    if (!gifUrl) return;
     
     const link = document.createElement('a');
-    link.href = `data:image/gif;base64,${gifData}`;
-    link.download = 'warp_simulation.gif';
+    link.href = gifUrl;
+    link.download = gifFilename || 'warp_simulation.gif';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -46,7 +48,7 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
     setIsFullscreen(!isFullscreen);
   };
 
-  if (!gifData) {
+  if (!gifUrl) {
     return (
       <Card className="bg-gradient-to-br from-slate-900/90 to-purple-900/90 backdrop-blur-xl border border-white/20">
         <CardContent className="p-8">
@@ -108,7 +110,7 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
               style={{ aspectRatio: `${resolution[0]}/${resolution[1]}` }}
             >
               <img
-                src={`data:image/gif;base64,${gifData}`}
+                src={gifUrl}
                 alt="WARP Volume Animation"
                 className="max-w-full max-h-full object-contain rounded"
                 style={{ imageRendering: 'crisp-edges' }}

@@ -466,10 +466,12 @@ app.use(express.json({ limit: '10mb' }));
 // Create directories
 const TEMP_DIR = path.join(__dirname, 'temp');
 const RESULTS_DIR = path.join(__dirname, 'results');
+const GIFS_DIR = path.join(__dirname, 'gifs');
 
 console.log(`📁 Creating directories...`);
 console.log(`   Temp: ${TEMP_DIR}`);
 console.log(`   Results: ${RESULTS_DIR}`);
+console.log(`   GIFs: ${GIFS_DIR}`);
 
 try {
     if (!fs.existsSync(TEMP_DIR)) {
@@ -479,6 +481,10 @@ try {
     if (!fs.existsSync(RESULTS_DIR)) {
         fs.mkdirSync(RESULTS_DIR, { recursive: true });
         console.log('✅ Results directory created');
+    }
+    if (!fs.existsSync(GIFS_DIR)) {
+        fs.mkdirSync(GIFS_DIR, { recursive: true });
+        console.log('✅ GIFs directory created');
     }
 } catch (error) {
     console.error('❌ Failed to create directories:', error);
@@ -646,6 +652,34 @@ app.post('/execute', (req, res) => {
                     if (gifOutputMatch) {
                         const gifOutputData = JSON.parse(gifOutputMatch[1]);
                         console.log(`🎞️ Found GIF_OUTPUT with ${gifOutputData.frame_count || 0} frames, size: ${gifOutputData.file_size_bytes || 0} bytes`);
+                        
+                        // If there's a gif_file path, move it to the gifs directory
+                        if (gifOutputData.gif_file) {
+                            const originalGifPath = path.resolve(gifOutputData.gif_file);
+                            const gifFilename = path.basename(originalGifPath);
+                            const newGifPath = path.join(GIFS_DIR, gifFilename);
+                            
+                            try {
+                                // Move the GIF file to the gifs directory
+                                if (fs.existsSync(originalGifPath)) {
+                                    fs.copyFileSync(originalGifPath, newGifPath);
+                                    fs.unlinkSync(originalGifPath); // Remove original
+                                    console.log(`📁 Moved GIF file: ${gifFilename}`);
+                                    
+                                    // Update the gif_file path to be a URL
+                                    const serverPort = PORT || 8000;
+                                    gifOutputData.gif_url = `http://localhost:${serverPort}/gifs/${gifFilename}`;
+                                    gifOutputData.gif_filename = gifFilename;
+                                    // Remove the local file path from the output
+                                    delete gifOutputData.gif_file;
+                                } else {
+                                    console.warn(`⚠️ GIF file not found: ${originalGifPath}`);
+                                }
+                            } catch (fileError) {
+                                console.error('Failed to move GIF file:', fileError);
+                            }
+                        }
+                        
                         Object.assign(videoData, gifOutputData);
                     }
                 } catch (parseError) {
@@ -776,7 +810,7 @@ app.post('/cleanup', (req, res) => {
         const oneHourAgo = Date.now() - (60 * 60 * 1000);
         let cleaned = 0;
         
-        [TEMP_DIR, RESULTS_DIR].forEach(dir => {
+        [TEMP_DIR, RESULTS_DIR, GIFS_DIR].forEach(dir => {
             const files = fs.readdirSync(dir);
             files.forEach(file => {
                 const filePath = path.join(dir, file);
@@ -791,6 +825,24 @@ app.post('/cleanup', (req, res) => {
         res.json({ cleaned, message: `Cleaned ${cleaned} old files` });
     } catch (err) {
         res.status(500).json({ error: 'Cleanup failed' });
+    }
+});
+
+// Serve GIF files
+app.get('/gifs/:filename', (req, res) => {
+    const { filename } = req.params;
+    const gifPath = path.join(GIFS_DIR, filename);
+    
+    try {
+        if (fs.existsSync(gifPath)) {
+            res.setHeader('Content-Type', 'image/gif');
+            res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+            res.sendFile(gifPath);
+        } else {
+            res.status(404).json({ error: 'GIF file not found' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to serve GIF file' });
     }
 });
 

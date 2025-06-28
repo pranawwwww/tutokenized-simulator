@@ -49,23 +49,41 @@ def test_gif_generation():
             optimize=True
         )
         
-        # Convert to base64
-        gif_base64 = base64.b64encode(gif_buffer.getvalue()).decode('utf-8')
+        # Save GIF to file
+        import time
+        import os
+        timestamp = int(time.time() * 1000)
+        gif_filename = f"test_gif_{timestamp}.gif"
+        
+        frames[0].save(
+            gif_filename,
+            format='GIF',
+            save_all=True,
+            append_images=frames[1:],
+            duration=100,  # 100ms per frame = 10 FPS
+            loop=0,
+            optimize=True
+        )
+        
+        # Get file size
+        gif_file_size = os.path.getsize(gif_filename)
         
         # Create output structure
         gif_output = {
             'type': 'gif_animation',
-            'gif_data': gif_base64,
+            'gif_file': gif_filename,
+            'gif_filename': gif_filename,
             'fps': 10,
             'resolution': resolution,
             'frame_count': len(frames),
             'duration': len(frames) / 10,
-            'file_size_bytes': len(gif_buffer.getvalue())
+            'file_size_bytes': gif_file_size
         }
         
         print(f"GIF_OUTPUT:{json.dumps(gif_output)}")
         print(f"✅ Test successful! Generated GIF with {len(frames)} frames.")
-        print(f"📊 GIF size: {len(gif_buffer.getvalue())} bytes")
+        print(f"📊 GIF size: {gif_file_size} bytes")
+        print(f"📁 GIF saved as: {gif_filename}")
         
         return True
         

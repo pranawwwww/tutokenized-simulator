@@ -8,6 +8,7 @@ import warp.render
 import json
 import base64
 import io
+import os
 from PIL import Image
 
 # Warp config
@@ -169,10 +170,15 @@ wp.synchronize()
 
 print("Converting frames to GIF...")
 
-# Create GIF in memory
-gif_buffer = io.BytesIO()
+# Generate unique filename with timestamp
+import time
+timestamp = int(time.time() * 1000)
+gif_filename = f"warp_volume_animation_{timestamp}.gif"
+gif_filepath = gif_filename  # Save in current directory
+
+# Save GIF to file
 gif_frames[0].save(
-    gif_buffer,
+    gif_filepath,
     format='GIF',
     save_all=True,
     append_images=gif_frames[1:],
@@ -181,20 +187,22 @@ gif_frames[0].save(
     optimize=True
 )
 
-# Convert to base64
-gif_base64 = base64.b64encode(gif_buffer.getvalue()).decode('utf-8')
+# Get file size
+gif_file_size = os.path.getsize(gif_filepath)
 
-# Output GIF data as JSON for backend to capture
+# Output GIF file info as JSON for backend to capture
 gif_output = {
     'type': 'gif_animation',
-    'gif_data': gif_base64,
+    'gif_file': gif_filepath,
+    'gif_filename': gif_filename,
     'fps': fps,
     'resolution': resolution,
     'frame_count': len(gif_frames),
     'duration': len(gif_frames) / fps,
-    'file_size_bytes': len(gif_buffer.getvalue())
+    'file_size_bytes': gif_file_size
 }
 
 print(f"GIF_OUTPUT:{json.dumps(gif_output)}")
 print(f"Simulation complete! Generated GIF with {len(gif_frames)} frames.")
-print(f"GIF size: {len(gif_buffer.getvalue())} bytes")
+print(f"GIF saved as: {gif_filepath}")
+print(f"GIF size: {gif_file_size} bytes")
