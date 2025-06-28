@@ -1,9 +1,0 @@
-{
-  "id": "fa23288d-e513-41c5-97b9-e203ec77c450",
-  "success": true,
-  "output": "Hello from test!\n2 + 2 = 4\n",
-  "error": "",
-  "execution_time": 0.025,
-  "timestamp": "2025-06-27T11:53:25.966Z",
-  "code": "print(\"Hello from test!\")\nresult = 2 + 2\nprint(f\"2 + 2 = {result}\")"
-}
