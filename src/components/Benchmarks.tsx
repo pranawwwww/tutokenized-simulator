@@ -4,15 +4,52 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Zap, Clock, BarChart3 } from 'lucide-react';
+import { useSystemMetrics } from '@/contexts/SystemMetricsContext';
 
 const Benchmarks = () => {
+  const { benchmarks, metrics } = useSystemMetrics();
+
+  // Create benchmark data from real results or fallback to static data
   const benchmarkData = [
-    { name: "Matrix Multiplication", score: 8950, progress: 89, status: "Excellent" },
-    { name: "Neural Network Training", score: 7240, progress: 72, status: "Good" },
-    { name: "Image Processing", score: 9100, progress: 91, status: "Excellent" },
-    { name: "Parallel Reduction", score: 6800, progress: 68, status: "Average" },
-    { name: "Memory Bandwidth", score: 7950, progress: 79, status: "Good" },
+    { 
+      name: "Matrix Multiplication", 
+      score: benchmarks?.matrix_multiplication.score ?? 8950, 
+      progress: Math.min((benchmarks?.matrix_multiplication.score ?? 8950) / 100, 100), 
+      status: benchmarks?.matrix_multiplication.status ?? "Excellent",
+      time: benchmarks?.matrix_multiplication.time ?? 0
+    },
+    { 
+      name: "Memory Access Pattern", 
+      score: benchmarks?.memory_access.score ?? 7240, 
+      progress: Math.min((benchmarks?.memory_access.score ?? 7240) / 100, 100), 
+      status: benchmarks?.memory_access.status ?? "Good",
+      time: benchmarks?.memory_access.time ?? 0
+    },
+    { 
+      name: "CPU Intensive Operations", 
+      score: benchmarks?.cpu_intensive.score ?? 9100, 
+      progress: Math.min((benchmarks?.cpu_intensive.score ?? 9100) / 100, 100), 
+      status: benchmarks?.cpu_intensive.status ?? "Excellent",
+      time: benchmarks?.cpu_intensive.time ?? 0
+    },
+    { 
+      name: "I/O Operations", 
+      score: benchmarks?.io_operations?.score ?? 6800, 
+      progress: Math.min((benchmarks?.io_operations?.score ?? 6800) / 100, 100), 
+      status: benchmarks?.io_operations?.status ?? "Average",
+      time: benchmarks?.io_operations?.time ?? 0
+    },
+    { name: "Memory Bandwidth", score: 7950, progress: 79, status: "Good", time: 0 },
   ];
+
+  // Calculate overall metrics
+  const overallScore = Math.round(benchmarkData.reduce((sum, b) => sum + b.score, 0) / benchmarkData.length);
+  const peakScore = Math.max(...benchmarkData.map(b => b.score));
+  const peakBenchmark = benchmarkData.find(b => b.score === peakScore)?.name ?? "Unknown";
+  const avgRuntime = benchmarkData.reduce((sum, b) => sum + b.time, 0) / benchmarkData.filter(b => b.time > 0).length || 2.4;
+  
+  const gpuModel = metrics?.gpu.name ?? 'RTX 4080';
+  const pythonVersion = benchmarks?.python_version ?? '3.11.0';
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -33,30 +70,32 @@ const Benchmarks = () => {
       </CardHeader>
       <CardContent className="p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg">
+          <div className="bg-blue-50 p-4 rounded-lg">
             <div className="flex items-center gap-3 mb-2">
               <TrendingUp className="w-5 h-5 text-blue-600" />
               <span className="font-semibold text-blue-800">Overall Score</span>
             </div>
-            <div className="text-2xl font-bold text-blue-700">8,028</div>
-            <p className="text-sm text-blue-600">+12% from last run</p>
+            <div className="text-2xl font-bold text-blue-700">{overallScore.toLocaleString()}</div>
+            <p className="text-sm text-blue-600">
+              {benchmarks ? 'From latest execution' : '+12% from last run'}
+            </p>
           </div>
           
-          <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg">
+          <div className="bg-green-50 p-4 rounded-lg">
             <div className="flex items-center gap-3 mb-2">
               <Zap className="w-5 h-5 text-green-600" />
               <span className="font-semibold text-green-800">Peak Performance</span>
             </div>
-            <div className="text-2xl font-bold text-green-700">9,100</div>
-            <p className="text-sm text-green-600">Image Processing</p>
+            <div className="text-2xl font-bold text-green-700">{peakScore.toLocaleString()}</div>
+            <p className="text-sm text-green-600">{peakBenchmark}</p>
           </div>
           
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg">
+          <div className="bg-purple-50 p-4 rounded-lg">
             <div className="flex items-center gap-3 mb-2">
               <Clock className="w-5 h-5 text-purple-600" />
               <span className="font-semibold text-purple-800">Avg. Runtime</span>
             </div>
-            <div className="text-2xl font-bold text-purple-700">2.4s</div>
+            <div className="text-2xl font-bold text-purple-700">{avgRuntime.toFixed(1)}s</div>
             <p className="text-sm text-purple-600">Per benchmark</p>
           </div>
         </div>
@@ -65,7 +104,7 @@ const Benchmarks = () => {
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Detailed Benchmark Results</h3>
           
           {benchmarkData.map((benchmark, index) => (
-            <div key={index} className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow">
+            <div key={index} className="bg-white border rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <span className="font-medium text-gray-800">{benchmark.name}</span>
@@ -73,9 +112,14 @@ const Benchmarks = () => {
                     {benchmark.status}
                   </Badge>
                 </div>
-                <span className="font-mono text-lg font-semibold text-gray-700">
-                  {benchmark.score.toLocaleString()}
-                </span>
+                  <span className="font-mono text-lg font-semibold text-gray-700">
+                    {benchmark.score.toLocaleString()}
+                  </span>
+                  {benchmark.time > 0 && (
+                    <span className="text-xs text-gray-500 ml-2">
+                      ({benchmark.time.toFixed(3)}s)
+                    </span>
+                  )}
               </div>
               
               <div className="flex items-center gap-3">
@@ -87,25 +131,30 @@ const Benchmarks = () => {
         </div>
 
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <h4 className="font-medium text-gray-800 mb-2">Benchmark Configuration</h4>
+          <h4 className="font-medium text-gray-800 mb-2">System Configuration</h4>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-gray-600">GPU Model:</span>
-              <span className="ml-2 font-mono">RTX 4080</span>
+              <span className="ml-2 font-mono">{gpuModel}</span>
             </div>
             <div>
-              <span className="text-gray-600">CUDA Version:</span>
-              <span className="ml-2 font-mono">12.2</span>
+              <span className="text-gray-600">Python Version:</span>
+              <span className="ml-2 font-mono">{pythonVersion}</span>
             </div>
             <div>
-              <span className="text-gray-600">Driver Version:</span>
-              <span className="ml-2 font-mono">537.13</span>
+              <span className="text-gray-600">Platform:</span>
+              <span className="ml-2 font-mono">{metrics?.system.platform ?? 'linux'}</span>
             </div>
             <div>
-              <span className="text-gray-600">Test Duration:</span>
-              <span className="ml-2 font-mono">12.1s</span>
+              <span className="text-gray-600">CPU Cores:</span>
+              <span className="ml-2 font-mono">{metrics?.cpu.threads ?? 16}</span>
             </div>
           </div>
+          {!benchmarks && (
+            <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-700">
+              ℹ️ Run code execution to see real benchmark results
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
