@@ -319,12 +319,16 @@ class SolVMPythonPoller:
             # Load average
             load_avg = psutil.getloadavg() if hasattr(psutil, 'getloadavg') else [0, 0, 0]
             
+            # GPU info
+            gpu_info = self._get_gpu_info()
+            
             return {
                 'cpu': {
                     'usage': cpu_percent,
                     'threads': cpu_count,
                     'frequency': cpu_freq.current if cpu_freq else 0,
-                    'model': platform.processor()
+                    'model': platform.processor(),
+                    'temperature': self._get_cpu_temperature()
                 },
                 'memory': {
                     'total': round(memory.total / (1024**3), 2),  # GB
@@ -332,6 +336,7 @@ class SolVMPythonPoller:
                     'used': round(memory.used / (1024**3), 2),  # GB
                     'usage_percent': memory.percent
                 },
+                'gpu': gpu_info,
                 'disk': {
                     'total': round(disk.total / (1024**3), 2),  # GB
                     'free': round(disk.free / (1024**3), 2),  # GB
@@ -350,6 +355,123 @@ class SolVMPythonPoller:
             return {
                 'error': f'Failed to get system metrics: {str(e)}'
             }
+    
+    def _get_gpu_info(self) -> Dict[str, Any]:
+        """Get GPU information"""
+        try:
+            import subprocess
+            
+            # Try to get NVIDIA GPU info
+            try:
+                result = subprocess.run([
+                    'nvidia-smi', 
+                    '--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu,driver_version',
+                    '--format=csv,noheader,nounits'
+                ], capture_output=True, text=True, timeout=5)
+                
+                if result.returncode == 0 and result.stdout.strip():
+                    gpu_data = result.stdout.strip().split(', ')
+                    if len(gpu_data) >= 6:
+                        return {
+                            'name': gpu_data[0],
+                            'usage': int(gpu_data[1]) if gpu_data[1].isdigit() else 0,
+                            'memory_used': int(gpu_data[2]) if gpu_data[2].isdigit() else 0,
+                            'memory_total': int(gpu_data[3]) if gpu_data[3].isdigit() else 0,
+                            'temperature': int(gpu_data[4]) if gpu_data[4].isdigit() else 0,
+                            'driver_version': gpu_data[5],
+                            'type': 'NVIDIA'
+                        }
+            except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+                pass
+            
+            # Try to detect AMD GPU
+            try:
+                result = subprocess.run(['rocm-smi', '--showuse'], capture_output=True, text=True, timeout=5)
+                if result.returncode == 0 and 'GPU' in result.stdout:
+                    return {
+                        'name': 'AMD GPU (detected)',
+                        'usage': 0,  # AMD GPU usage detection would need more specific commands
+                        'memory_used': 0,
+                        'memory_total': 0,
+                        'temperature': 0,
+                        'driver_version': 'Unknown',
+                        'type': 'AMD'
+                    }
+            except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+                pass
+            
+            # Fallback to integrated graphics detection
+            try:
+                result = subprocess.run(['lspci'], capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    for line in result.stdout.split('\n'):
+                        if 'VGA' in line or 'Display' in line:
+                            gpu_name = line.split(': ')[-1] if ': ' in line else 'Integrated Graphics'
+                            return {
+                                'name': gpu_name,
+                                'usage': 0,
+                                'memory_used': 0,
+                                'memory_total': 0,
+                                'temperature': 0,
+                                'driver_version': 'Unknown',
+                                'type': 'Integrated'
+                            }
+            except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+                pass
+            
+            return {
+                'name': 'No GPU detected',
+                'usage': 0,
+                'memory_used': 0,
+                'memory_total': 0,
+                'temperature': 0,
+                'driver_version': 'N/A',
+                'type': 'None'
+            }
+            
+        except Exception as e:
+            return {
+                'name': 'GPU info unavailable',
+                'usage': 0,
+                'memory_used': 0,
+                'memory_total': 0,
+                'temperature': 0,
+                'driver_version': 'N/A',
+                'type': 'Unknown',
+                'error': str(e)
+            }
+    
+    def _get_cpu_temperature(self) -> float:
+        """Get CPU temperature"""
+        try:
+            import subprocess
+            
+            # Try different methods to get CPU temperature
+            temp_commands = [
+                ['cat', '/sys/class/thermal/thermal_zone0/temp'],
+                ['sensors', '-u'],
+                ['cat', '/sys/devices/platform/coretemp.0/hwmon/hwmon*/temp*_input']
+            ]
+            
+            for cmd in temp_commands:
+                try:
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=2)
+                    if result.returncode == 0 and result.stdout.strip():
+                        temp_str = result.stdout.strip().split('\n')[0]
+                        temp = float(temp_str)
+                        
+                        # Convert from millicelsius if needed
+                        if temp > 1000:
+                            temp = temp / 1000
+                        
+                        if 0 < temp < 150:  # Reasonable temperature range
+                            return round(temp, 1)
+                except (subprocess.TimeoutExpired, ValueError, IndexError):
+                    continue
+            
+            return 0.0
+        except Exception:
+            return 0.0
 
     def get_status(self) -> Dict[str, Any]:
         """Get current poller status"""

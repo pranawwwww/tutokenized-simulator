@@ -120,12 +120,22 @@ async function getSystemMetrics() {
                         metrics.gpu.memory_total = parseInt(gpuData[3]) || 0;
                         metrics.gpu.temperature = parseInt(gpuData[4]) || 0;
                         metrics.gpu.driver_version = gpuData[5];
+                        metrics.gpu.type = 'NVIDIA';
                     }
                 } else {
-                    // Try to detect other GPU types
-                    exec('lspci | grep -i vga', (lspciError, lspciStdout) => {
-                        if (!lspciError && lspciStdout) {
-                            metrics.gpu.name = lspciStdout.trim().split(': ')[1] || 'Integrated Graphics';
+                    // Try to detect AMD GPU
+                    exec('rocm-smi --showuse', (amdError, amdStdout) => {
+                        if (!amdError && amdStdout && amdStdout.includes('GPU')) {
+                            metrics.gpu.name = 'AMD GPU (detected)';
+                            metrics.gpu.type = 'AMD';
+                        } else {
+                            // Try to detect other GPU types
+                            exec('lspci | grep -i vga', (lspciError, lspciStdout) => {
+                                if (!lspciError && lspciStdout) {
+                                    metrics.gpu.name = lspciStdout.trim().split(': ')[1] || 'Integrated Graphics';
+                                    metrics.gpu.type = 'Integrated';
+                                }
+                            });
                         }
                     });
                 }

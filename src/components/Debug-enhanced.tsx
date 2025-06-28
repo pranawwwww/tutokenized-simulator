@@ -58,7 +58,8 @@ const Debug: React.FC<DebugProps> = ({ executionResult }) => {
         newOutput += `✅ Execution completed in ${executionResult.execution_time.toFixed(2)}s\n`;
         newOutput += '─'.repeat(50) + '\n';
         newOutput += 'OUTPUT:\n';
-        newOutput += executionResult.output || '(No output)';      } else {
+        newOutput += executionResult.output || '(No output)';
+      } else {
         newOutput += `❌ Execution failed in ${executionResult.execution_time.toFixed(2)}s\n`;
         newOutput += '─'.repeat(50) + '\n';
         newOutput += 'ERROR:\n';
@@ -242,7 +243,7 @@ const Debug: React.FC<DebugProps> = ({ executionResult }) => {
           </CardContent>
         </Card>
       )}
-
+      
       {/* Header with controls */}
       <Card className="glass-card bg-white/70 backdrop-blur-sm border border-gray-200/50">
         <CardHeader className="pb-3">
@@ -270,7 +271,8 @@ const Debug: React.FC<DebugProps> = ({ executionResult }) => {
                     {lastResult.execution_time.toFixed(2)}s
                   </span>
                 </div>
-              )}              <Button 
+              )}
+              <Button 
                 size="sm" 
                 variant="outline" 
                 onClick={testConnection}
@@ -306,7 +308,7 @@ const Debug: React.FC<DebugProps> = ({ executionResult }) => {
       {/* Output display */}
       <Card className="glass-card bg-white/70 backdrop-blur-sm border border-gray-200/50 flex-1">
         <CardContent className="p-0 h-full">
-          <ScrollArea className="h-[500px] w-full">
+          <ScrollArea className="h-[400px] w-full">
             <div className="p-6">
               <pre className="text-sm font-mono whitespace-pre-wrap break-words">
                 {output}
