@@ -408,7 +408,32 @@ if gif_frames:
             'frame_count': len(gif_frames),
             'duration': len(gif_frames) / fps,
             'file_size_bytes': len(gif_bytes),
-            'gif_filename': f'warp_volume_{len(gif_frames)}frames.gif'
+            'gif_filename': f'warp_volume_{len(gif_frames)}frames.gif',
+            # Add benchmark data for frontend processing
+            'benchmark_data': {
+                'system_info': system_info,
+                'performance_metrics': {
+                    **benchmark.get_averages(),
+                    'gif_creation_time': 0,  # Will be calculated
+                    'frame_conversion_time': conversion_time,
+                    'effective_fps': len(gif_frames) / benchmark.get_total_time() if benchmark.get_total_time() > 0 else 0
+                },
+                'individual_frame_times': benchmark.frame_times,
+                'field_generation_times': benchmark.field_generation_times,
+                'marching_cubes_times': benchmark.marching_cubes_times,
+                'rendering_times': benchmark.rendering_times,
+                'simulation_settings': {
+                    'resolution': resolution,
+                    'dimension': dim,
+                    'num_frames': num_frames,
+                    'fps': fps,
+                    'torus_altitude': torus_altitude,
+                    'torus_major_radius': torus_major_radius,
+                    'torus_minor_radius': torus_minor_radius,
+                    'smooth_min_radius': smooth_min_radius
+                },
+                'error_occurred': False
+            }
         }
         
         print(f"GIF_OUTPUT:{json.dumps(gif_output)}")

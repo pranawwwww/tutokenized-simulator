@@ -287,26 +287,25 @@ print("NumPy:", "Available" if HAS_NUMPY else "Not Available")
 print("psutil:", "Available" if HAS_PSUTIL else "Not Available")
 
 # System info
-sys_info = get_system_info();
-for (key, value) in Object.entries(sys_info)) {
-    print(`SYS_${key.toUpperCase()}:${value}`);
-}
+sys_info = get_system_info()
+for key, value in sys_info.items():
+    print(f"SYS_{key.upper()}:{value}")
 
-try {
-    matrix_time = benchmark_matrix_multiplication();
-    memory_time = benchmark_memory_access();
-    cpu_result, cpu_time = benchmark_cpu_intensive();
-    io_time = benchmark_io_operations();
+try:
+    matrix_time = benchmark_matrix_multiplication()
+    memory_time = benchmark_memory_access()
+    cpu_result, cpu_time = benchmark_cpu_intensive()
+    io_time = benchmark_io_operations()
 
-    print(`MATRIX_MULT_TIME:${matrix_time.toFixed(4)}`);
-    print(`MEMORY_ACCESS_TIME:${memory_time.toFixed(4)}`);
-    print(`CPU_INTENSIVE_TIME:${cpu_time.toFixed(4)}`);
-    print(`IO_OPERATIONS_TIME:${io_time.toFixed(4)}`);
-    print(`PYTHON_VERSION:${sys.version.split()[0]}`);
-    print("BENCHMARK_END");
-} catch (Exception e) {
-    print(`BENCHMARK_ERROR:${str(e)}`);
-    print("BENCHMARK_END");
+    print(f"MATRIX_MULT_TIME:{matrix_time:.4f}")
+    print(f"MEMORY_ACCESS_TIME:{memory_time:.4f}")
+    print(f"CPU_INTENSIVE_TIME:{cpu_time:.4f}")
+    print(f"IO_OPERATIONS_TIME:{io_time:.4f}")
+    print(f"PYTHON_VERSION:{sys.version.split()[0]}")
+    print("BENCHMARK_END")
+except Exception as e:
+    print(f"BENCHMARK_ERROR:{str(e)}")
+    print("BENCHMARK_END")
 `;
 
         const benchmarkFile = path.join(__dirname, 'temp', `benchmark_${Date.now()}.py`);
@@ -599,15 +598,26 @@ app.post('/execute', (req, res) => {
     console.log(`🚀 Executing code with ID: ${executionId}`);
     console.log(`📄 Temp file: ${tempFile}`);
     
-    try {
-        // Write code to temporary Python file
+    try {        // Write code to temporary Python file
         fs.writeFileSync(tempFile, code, 'utf8');
         console.log('✅ Code written to temp file');
           const startTime = Date.now();
+          // Always use benchmarking for comprehensive hardware monitoring
+        const benchmarkingScript = path.join(__dirname, '..', 'ml_examples', 'benchmarking.py');
+        const shouldUseBenchmarking = fs.existsSync(benchmarkingScript);
         
-        // Execute Python code
-        const command = `${PYTHON_COMMAND} "${tempFile}"`;
-        console.log(`⚡ Running command: ${command}`);
+        console.log(`🔍 Benchmarking script path: ${benchmarkingScript}`);
+        console.log(`📊 Benchmarking available: ${shouldUseBenchmarking}`);
+        
+        // Execute Python code - use benchmarking wrapper for ALL executions to capture hardware metrics
+        let command;
+        if (shouldUseBenchmarking) {
+            command = `${PYTHON_COMMAND} "${benchmarkingScript}" "${tempFile}"`;
+            console.log(`⚡ Running Python code with hardware benchmarking: ${command}`);
+        } else {
+            command = `${PYTHON_COMMAND} "${tempFile}"`;
+            console.log(`⚠️ Running without benchmarking (benchmarking.py not found): ${command}`);
+        }
         
         exec(command, { 
             timeout: 120000, // 2 minutes for video generation
@@ -644,8 +654,7 @@ app.post('/execute', (req, res) => {
                     console.error('Failed to parse VIDEO_OUTPUT:', parseError);
                 }
             }
-            
-            // Parse GIF_OUTPUT from stdout if present
+              // Parse GIF_OUTPUT from stdout if present
             if (stdout && stdout.includes('GIF_OUTPUT:')) {
                 try {
                     const gifOutputMatch = stdout.match(/GIF_OUTPUT:(.+)/);
@@ -686,14 +695,93 @@ app.post('/execute', (req, res) => {
                     console.error('Failed to parse GIF_OUTPUT:', parseError);
                 }
             }
+              // Parse HARDWARE_BENCHMARK_OUTPUT from stdout if present (from benchmarking.py)
+            let hardwareBenchmarks = null;
+            console.log(`🔍 Checking for HARDWARE_BENCHMARK_OUTPUT in stdout...`);
+            console.log(`📤 stdout length: ${stdout ? stdout.length : 0} characters`);
+            
+            if (stdout && stdout.includes('HARDWARE_BENCHMARK_OUTPUT:')) {
+                console.log(`✅ Found HARDWARE_BENCHMARK_OUTPUT marker in stdout`);
+                try {
+                    const benchmarkOutputMatch = stdout.match(/HARDWARE_BENCHMARK_OUTPUT:(.+)/);
+                    if (benchmarkOutputMatch) {
+                        const benchmarkData = JSON.parse(benchmarkOutputMatch[1]);
+                        console.log(`🏁 Successfully parsed HARDWARE_BENCHMARK_OUTPUT with execution time: ${benchmarkData.execution_time || 0}s`);
+                        console.log(`📊 Benchmark data keys: ${Object.keys(benchmarkData)}`);
+                        hardwareBenchmarks = benchmarkData;
+                        
+                        // If the benchmarking wrapper captured the script output, merge it
+                        if (benchmarkData.script_output) {
+                            console.log('📋 Merging script output from benchmarking wrapper');
+                            
+                            // Check if script output contains VIDEO_OUTPUT or GIF_OUTPUT
+                            const scriptOutput = benchmarkData.script_output;
+                            
+                            if (scriptOutput.includes('VIDEO_OUTPUT:')) {
+                                try {
+                                    const videoMatch = scriptOutput.match(/VIDEO_OUTPUT:(.+)/);
+                                    if (videoMatch) {
+                                        const videoOutputData = JSON.parse(videoMatch[1]);
+                                        console.log(`🎬 Found VIDEO_OUTPUT in script output with ${videoOutputData.frames?.length || 0} frames`);
+                                        Object.assign(videoData, videoOutputData);
+                                    }
+                                } catch (parseError) {
+                                    console.error('Failed to parse VIDEO_OUTPUT from script output:', parseError);
+                                }
+                            }
+                            
+                            if (scriptOutput.includes('GIF_OUTPUT:')) {
+                                try {
+                                    const gifMatch = scriptOutput.match(/GIF_OUTPUT:(.+)/);
+                                    if (gifMatch) {
+                                        const gifOutputData = JSON.parse(gifMatch[1]);
+                                        console.log(`🎞️ Found GIF_OUTPUT in script output with ${gifOutputData.frame_count || 0} frames`);
+                                        
+                                        // Handle GIF file movement same as above
+                                        if (gifOutputData.gif_file) {
+                                            const originalGifPath = path.resolve(gifOutputData.gif_file);
+                                            const gifFilename = path.basename(originalGifPath);
+                                            const newGifPath = path.join(GIFS_DIR, gifFilename);
+                                            
+                                            try {
+                                                if (fs.existsSync(originalGifPath)) {
+                                                    fs.copyFileSync(originalGifPath, newGifPath);
+                                                    fs.unlinkSync(originalGifPath);
+                                                    console.log(`📁 Moved GIF file from script output: ${gifFilename}`);
+                                                    
+                                                    const serverPort = PORT || 8000;
+                                                    gifOutputData.gif_url = `http://localhost:${serverPort}/gifs/${gifFilename}`;
+                                                    gifOutputData.gif_filename = gifFilename;
+                                                    delete gifOutputData.gif_file;
+                                                }
+                                            } catch (fileError) {
+                                                console.error('Failed to move GIF file from script output:', fileError);
+                                            }
+                                        }
+                                        
+                                        Object.assign(videoData, gifOutputData);
+                                    }
+                                } catch (parseError) {
+                                    console.error('Failed to parse GIF_OUTPUT from script output:', parseError);
+                                }
+                            }
+                        }
+                    }                } catch (parseError) {
+                    console.error('Failed to parse HARDWARE_BENCHMARK_OUTPUT:', parseError);
+                }
+            } else {
+                console.log(`❌ No HARDWARE_BENCHMARK_OUTPUT found in stdout`);
+                if (shouldUseBenchmarking) {
+                    console.log(`⚠️ Expected hardware benchmarks but none found - benchmarking may have failed`);
+                }
+            }
             
             // Run benchmarks if execution was successful
             let benchmarks = null;
             if (!error) {
                 console.log('🏃 Running performance benchmarks...');
                 benchmarks = await runBenchmarks();
-            }
-              const result = {
+            }              const result = {
                 id: executionId,
                 success: !error,
                 output: stdout || '',
@@ -703,10 +791,18 @@ app.post('/execute', (req, res) => {
                 code: code,
                 system_metrics: systemMetrics,
                 benchmarks: benchmarks,
+                hardware_benchmarks: hardwareBenchmarks,
                 video_data: videoData,
                 binary_outputs: {},
                 file_outputs: {}
             };
+            
+            // Debug: Log what we're sending to frontend
+            console.log(`📦 Result summary:`);
+            console.log(`   - success: ${result.success}`);
+            console.log(`   - has video_data: ${!!result.video_data && Object.keys(result.video_data).length > 0}`);
+            console.log(`   - has hardware_benchmarks: ${!!result.hardware_benchmarks}`);
+            console.log(`   - has benchmarks: ${!!result.benchmarks}`);
             
             // Log the result
             if (result.success) {

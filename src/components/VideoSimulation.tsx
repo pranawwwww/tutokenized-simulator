@@ -81,9 +81,70 @@ interface VideoSimulationProps {
           torus_major_radius?: number;
           torus_minor_radius?: number;
           smooth_min_radius?: number;
-        };
-        error_occurred?: boolean;
+        };        error_occurred?: boolean;
       };
+    };
+    // Hardware benchmarks from benchmarking.py
+    hardware_benchmarks?: {
+      status: string;
+      execution_time: number;
+      script_output?: string;
+      script_errors?: string;
+      benchmark_data?: {
+        system_info?: {
+          os?: {
+            system?: string;
+            version?: string;
+            platform?: string;
+          };
+          cpu?: {
+            brand?: string;
+            architecture?: string;
+            cores?: number;
+            frequency?: number;
+          };
+          memory?: {
+            total?: number;
+          };
+          python?: {
+            version?: string;
+          };
+        };
+        system_metrics?: Array<{
+          timestamp: number;
+          cpu_percent: number;
+          memory_percent: number;
+          memory_total?: number;
+          memory_used?: number;
+          memory_available?: number;
+          cpu_count?: number;
+          cpu_freq_current?: number;
+        }>;
+        gpu_metrics?: Array<{
+          gpu_id: number;
+          name: string;
+          utilization_percent: number;
+          memory_used_mb: number;
+          memory_total_mb: number;
+          memory_percent: number;
+          temperature_c: number;
+          power_draw_w?: number;
+          clock_graphics_mhz?: number;
+          clock_memory_mhz?: number;
+        }>;
+        performance_summary?: {
+          monitoring_duration: number;
+          avg_cpu_usage: number;
+          max_cpu_usage: number;
+          avg_memory_usage: number;
+          max_memory_usage: number;
+          avg_gpu_utilization?: number;
+          max_gpu_utilization?: number;
+          avg_gpu_memory_usage?: number;
+          max_gpu_memory_usage?: number;
+        };
+      };
+      script_name?: string;
     };
   };
 }
@@ -168,8 +229,105 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
             effective_fps: perfMetrics.effective_fps,
             frame_count: perfMetrics.frame_count
           }
+        };        updateBenchmarks(benchmarks);
+      }
+    }
+
+    // Process hardware benchmark data from benchmarking.py
+    if (executionResult?.success && executionResult.hardware_benchmarks) {
+      const hardwareBenchmarks = executionResult.hardware_benchmarks;
+      console.log('🔧 Processing hardware benchmark data:', hardwareBenchmarks);
+      
+      // Update system metrics from hardware benchmarking if available
+      if (hardwareBenchmarks.benchmark_data?.system_metrics?.length > 0) {
+        // Use the latest system metrics
+        const latestMetrics = hardwareBenchmarks.benchmark_data.system_metrics[
+          hardwareBenchmarks.benchmark_data.system_metrics.length - 1
+        ];
+        
+        const hardwareMetrics = {
+          cpu: {
+            usage: latestMetrics.cpu_percent || 0,
+            threads: latestMetrics.cpu_count || 1,
+            clockSpeed: latestMetrics.cpu_freq_current ? latestMetrics.cpu_freq_current / 1000 : 0,
+            temperature: 0, // May be available in GPU metrics
+            model: hardwareBenchmarks.benchmark_data.system_info?.cpu?.brand || 'Unknown CPU'
+          },
+          memory: {
+            total: Math.round((latestMetrics.memory_total || 0) / (1024**3)), // Convert to GB
+            used: Math.round((latestMetrics.memory_used || 0) / (1024**3)),
+            free: Math.round((latestMetrics.memory_available || 0) / (1024**3)),
+            usage_percent: latestMetrics.memory_percent || 0
+          },
+          gpu: {
+            usage: 0,
+            memory_used: 0,
+            memory_total: 0,
+            temperature: 0,
+            name: 'N/A'
+          },
+          system: {
+            platform: hardwareBenchmarks.benchmark_data.system_info?.os?.system || 'Unknown',
+            arch: hardwareBenchmarks.benchmark_data.system_info?.cpu?.architecture || 'Unknown',
+            uptime: 0,
+            loadavg: []
+          }
         };
-        updateBenchmarks(benchmarks);
+
+        // Update GPU metrics if available
+        if (hardwareBenchmarks.benchmark_data?.gpu_metrics?.length > 0) {
+          const latestGpu = hardwareBenchmarks.benchmark_data.gpu_metrics[
+            hardwareBenchmarks.benchmark_data.gpu_metrics.length - 1
+          ];
+          hardwareMetrics.gpu = {
+            usage: latestGpu.utilization_percent || 0,
+            memory_used: latestGpu.memory_used_mb || 0,
+            memory_total: latestGpu.memory_total_mb || 0,
+            temperature: latestGpu.temperature_c || 0,
+            name: latestGpu.name || 'Unknown GPU'
+          };
+        }
+
+        updateMetrics(hardwareMetrics);
+      }      // Create extended benchmark results that include hardware monitoring
+      if (hardwareBenchmarks.benchmark_data?.performance_summary) {
+        const perfSummary = hardwareBenchmarks.benchmark_data.performance_summary;
+        const extendedBenchmarks = {
+          // Required fields for Benchmarks interface
+          matrix_multiplication: {
+            time: hardwareBenchmarks.execution_time || 0,
+            score: Math.round(100 / (hardwareBenchmarks.execution_time || 1)),
+            status: (hardwareBenchmarks.execution_time || 0) < 5 ? 'Excellent' : 
+                   (hardwareBenchmarks.execution_time || 0) < 15 ? 'Good' : 'Average'
+          },
+          memory_access: {
+            time: perfSummary.avg_memory_usage || 0,
+            score: Math.round(100 - (perfSummary.avg_memory_usage || 0)),
+            status: (perfSummary.avg_memory_usage || 0) < 70 ? 'Excellent' : 
+                   (perfSummary.avg_memory_usage || 0) < 85 ? 'Good' : 'High'
+          },
+          cpu_intensive: {
+            time: perfSummary.avg_cpu_usage || 0,
+            score: Math.round((perfSummary.avg_cpu_usage || 0) * 1.2),
+            status: (perfSummary.avg_cpu_usage || 0) > 60 ? 'Excellent' : 
+                   (perfSummary.avg_cpu_usage || 0) > 30 ? 'Good' : 'Low'
+          },
+          io_operations: {
+            time: perfSummary.avg_gpu_utilization || 0,
+            score: Math.round((perfSummary.avg_gpu_utilization || 0) * 10),
+            status: (perfSummary.avg_gpu_utilization || 0) > 80 ? 'Excellent' : 
+                   (perfSummary.avg_gpu_utilization || 0) > 50 ? 'Good' : 'Low'
+          },
+          python_version: hardwareBenchmarks.benchmark_data?.system_info?.python?.version || '3.x',
+          system_info: {
+            hardware_monitoring: true,
+            execution_time: hardwareBenchmarks.execution_time,
+            script_name: hardwareBenchmarks.script_name,
+            monitoring_duration: perfSummary.monitoring_duration
+          }
+        };
+        
+        updateBenchmarks(extendedBenchmarks);
       }
     }
   }, [executionResult, updateMetrics, updateBenchmarks]);
