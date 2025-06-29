@@ -608,15 +608,19 @@ app.post('/execute', (req, res) => {
         
         console.log(`🔍 Benchmarking script path: ${benchmarkingScript}`);
         console.log(`📊 Benchmarking available: ${shouldUseBenchmarking}`);
+        console.log(`📁 Current working directory: ${__dirname}`);
+        console.log(`📂 Parent directory exists: ${fs.existsSync(path.join(__dirname, '..'))}`);
         
         // Execute Python code - use benchmarking wrapper for ALL executions to capture hardware metrics
         let command;
         if (shouldUseBenchmarking) {
             command = `${PYTHON_COMMAND} "${benchmarkingScript}" "${tempFile}"`;
             console.log(`⚡ Running Python code with hardware benchmarking: ${command}`);
+            console.log(`✅ Benchmarking enabled - expect HARDWARE_BENCHMARK_OUTPUT in results`);
         } else {
             command = `${PYTHON_COMMAND} "${tempFile}"`;
             console.log(`⚠️ Running without benchmarking (benchmarking.py not found): ${command}`);
+            console.log(`❌ Hardware benchmarking disabled - only basic benchmarks will be available`);
         }
         
         exec(command, { 
@@ -781,6 +785,9 @@ app.post('/execute', (req, res) => {
             if (!error) {
                 console.log('🏃 Running performance benchmarks...');
                 benchmarks = await runBenchmarks();
+                console.log('📊 Generated benchmarks:', benchmarks ? 'Success' : 'Failed');
+            } else {
+                console.log('⚠️ Skipping benchmarks due to execution error');
             }              const result = {
                 id: executionId,
                 success: !error,

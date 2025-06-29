@@ -45,7 +45,7 @@ const WorkspaceTabs = ({ activeTab, setActiveTab, executionResult }) => {
 
       <TabsContent value="benchmarks" className="p-0 h-[550px]">
         <ScrollArea className="h-full p-6">
-          <Benchmarks />
+          <Benchmarks executionResult={executionResult} />
         </ScrollArea>
       </TabsContent>
       <TabsContent value="video" className="p-0 h-[550px]">
