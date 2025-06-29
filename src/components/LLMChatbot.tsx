@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Send, Bot, User } from "lucide-react";
+import { Send, Bot, User, RotateCcw, Paperclip } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 interface Message {
@@ -12,20 +12,129 @@ interface Message {
   timestamp: Date;
 }
 
-const LLMChatbot = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
+interface ChatState {
+  messages: Message[];
+  contextData: string;
+}
+
+interface LLMChatbotProps {
+  executionResult?: any;
+  codeContext?: string;
+  chatState?: ChatState;
+  onChatStateChange?: (newState: ChatState) => void;
+  onResetChat?: () => void;
+}
+
+const LLMChatbot: React.FC<LLMChatbotProps> = ({ 
+  executionResult, 
+  codeContext, 
+  chatState, 
+  onChatStateChange, 
+  onResetChat 
+}) => {
+  // Use persistent state if provided, otherwise fall back to local state
+  const [localMessages, setLocalMessages] = useState<Message[]>([]);
+  const [localContextData, setLocalContextData] = useState<string>("");
+  
+  const messages = chatState?.messages || localMessages;
+  const contextData = chatState?.contextData || localContextData;
+  
+  const updateChatState = (newMessages: Message[], newContextData: string) => {
+    if (onChatStateChange) {
+      onChatStateChange({
+        messages: newMessages,
+        contextData: newContextData
+      });
+    } else {
+      setLocalMessages(newMessages);
+      setLocalContextData(newContextData);
+    }
+  };
+
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [pendingBotMessage, setPendingBotMessage] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  // Update context when execution result changes
+  useEffect(() => {
+    if (executionResult) {
+      const contextInfo = `
+## Recent Code Execution Context:
+**Execution Status:** ${executionResult.success ? '✅ Success' : '❌ Failed'}
+**Execution Time:** ${executionResult.execution_time?.toFixed(2) || 'N/A'}s
+**Timestamp:** ${new Date(executionResult.timestamp).toLocaleString()}
+**Executor:** ${executionResult.executor_type || 'Unknown'}
 
-  // Auto-scroll chat to bottom when messages or loading changes
+**Code Executed:**
+\`\`\`python
+${executionResult.code || 'No code available'}
+\`\`\`
+
+**Output:**
+\`\`\`
+${executionResult.output || 'No output'}
+\`\`\`
+
+${executionResult.error ? `**Error:**
+\`\`\`
+${executionResult.error}
+\`\`\`` : ''}
+
+${executionResult.system_metrics ? `**System Metrics:**
+- CPU Usage: ${executionResult.system_metrics.cpu_percent || 'N/A'}%
+- Memory Usage: ${executionResult.system_metrics.memory_percent || 'N/A'}%
+- GPU Utilization: ${executionResult.system_metrics.gpu_utilization || 'N/A'}%` : ''}
+
+${executionResult.benchmarks ? `**Benchmarks:**
+- Matrix Multiplication: ${executionResult.benchmarks.matrix_multiplication?.time || 'N/A'}s (Score: ${executionResult.benchmarks.matrix_multiplication?.score || 'N/A'})
+- Memory Access: ${executionResult.benchmarks.memory_access?.time || 'N/A'}s (Score: ${executionResult.benchmarks.memory_access?.score || 'N/A'})
+- CPU Intensive: ${executionResult.benchmarks.cpu_intensive?.time || 'N/A'}s (Score: ${executionResult.benchmarks.cpu_intensive?.score || 'N/A'})` : ''}
+      `;
+        updateChatState(messages, contextInfo);
+      
+      // Only auto-update if there are less than 2 messages (to avoid spam in active conversations)
+      if (messages.length < 2 && (executionResult.success || executionResult.error)) {
+        const autoMessage = `I just executed some code. ${executionResult.success ? 'It ran successfully!' : 'It encountered an error.'} Can you help me understand the results and suggest improvements?`;
+        setTimeout(() => handleAutoContextUpdate(autoMessage, contextInfo), 1000); // Delay to avoid race conditions
+      }
+    }
+  }, [executionResult, messages.length]);
+
+  // Update context with code from editor
+  useEffect(() => {
+    if (codeContext) {
+      const editorContext = `
+## Current Code in Editor:
+\`\`\`python
+${codeContext}
+\`\`\`
+      `;
+      updateChatState(messages, contextData + editorContext);
+    }
+  }, [codeContext]);// Auto-scroll chat to bottom when messages or loading changes
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      // Find the scrollable chat container more reliably
+      let chatContainer = messagesEndRef.current.parentElement;
+      
+      // Walk up the DOM tree to find the scrollable container
+      while (chatContainer) {
+        const computedStyle = window.getComputedStyle(chatContainer);
+        if (computedStyle.overflowY === 'auto' || computedStyle.overflowY === 'scroll') {
+          // Found the scrollable container, scroll to bottom
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+          return;
+        }
+        chatContainer = chatContainer.parentElement;
+      }
+      
+      // If no scrollable container found, try the fallback
+      const parent = messagesEndRef.current.parentElement;
+      if (parent) {
+        parent.scrollTop = parent.scrollHeight;
+      }
     }
-    // Do NOT focus the textarea here or anywhere else
   }, [messages, isLoading, pendingBotMessage]);
 
   // Auto-resize textarea and scroll to caret
@@ -40,10 +149,14 @@ const LLMChatbot = () => {
 
   const API_KEY =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwcm9qZWN0X2lkIjoiNmNhMGI4NjlhYTJkNDY2MmJiMWYxZWM2NDJkMzljZjQiLCJzZXJ2aWNlX2FwcCI6ImtlLXNvbF9oYWNrYXRob25fMTciLCJrZXlfaWQiOiI4NWM4ZWFiMi0zYzQ1LTRiOTItYmZhNy05NzJlNTllNjI0ODAiLCJ0eXBlIjoic2VydmljZSIsImFwaSI6Im1haW4iLCJpYXQiOjE3NTA2MzYxMDEsImlzcyI6ImFkbWluLWJldGEifQ.yf2H-jZxX1zWOpl-a33j6bY8u7ojr9DCXs4V7S1tmek";
+  const sendApiQuery = async (query: string, includeContext: boolean = true): Promise<string> => {
+    // Enhance the query with context if available
+    const enhancedQuery = includeContext && contextData ? 
+      `${contextData}\n\n## User Question:\n${query}` : 
+      query;
 
-  const sendApiQuery = async (query: string): Promise<string> => {
     const body = {
-      query,
+      query: enhancedQuery,
       endpoint: "queryV2",
       model_provider: "openai",
       model_name: "gpt4o",
@@ -86,6 +199,31 @@ const LLMChatbot = () => {
     }
   };
 
+  // Handle automatic context updates
+  const handleAutoContextUpdate = async (message: string, context: string) => {
+    // Only send automatic updates if there are no pending messages to avoid spam
+    if (isLoading || pendingBotMessage) return;
+
+    // Add system message
+    const systemMessage: Message = {
+      id: Date.now(),
+      type: "user",
+      content: message,
+      timestamp: new Date(),
+    };
+    updateChatState([...messages, systemMessage], contextData);
+    setIsLoading(true);
+
+    try {
+      const botReply = await sendApiQuery(message, true);
+      await animateBotMessage(botReply);
+    } catch (error) {
+      console.error('Auto context update failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Typing animation for bot response (word by word)
   const animateBotMessage = async (fullText: string) => {
     setPendingBotMessage("");
@@ -96,34 +234,92 @@ const LLMChatbot = () => {
       current += (i === 0 ? "" : " ") + words[i];
       setPendingBotMessage(current);
       await new Promise((res) => setTimeout(res, 30)); // 30ms per word
-    }
-    setPendingBotMessage("");
-    setMessages((prev) => [
-      ...prev,
+    }    setPendingBotMessage("");
+    updateChatState([
+      ...messages,
       {
         id: Date.now() + 1,
         type: "bot",
         content: fullText,
         timestamp: new Date(),
       },
-    ]);
-    setIsLoading(false);
+    ], contextData);
+    setIsLoading(false);  };
+
+  // Manual context attachment function
+  const handleAttachContext = () => {
+    let manualContext = '';
+    
+    // Add current code context if available
+    if (codeContext) {
+      manualContext += `
+## Current Code in Editor:
+\`\`\`python
+${codeContext}
+\`\`\`
+`;
+    }
+    
+    // Add execution result context if available
+    if (executionResult) {
+      manualContext += `
+## Latest Execution Results:
+**Status:** ${executionResult.success ? '✅ Success' : '❌ Failed'}
+**Execution Time:** ${executionResult.execution_time?.toFixed(2) || 'N/A'}s
+**Timestamp:** ${new Date(executionResult.timestamp).toLocaleString()}
+**Executor:** ${executionResult.executor_type || 'Unknown'}
+
+**Output:**
+\`\`\`
+${executionResult.output || 'No output'}
+\`\`\`
+
+${executionResult.error ? `**Error:**
+\`\`\`
+${executionResult.error}
+\`\`\`` : ''}
+
+${executionResult.system_metrics ? `**System Metrics:**
+- CPU Usage: ${executionResult.system_metrics.cpu_percent || 'N/A'}%
+- Memory Usage: ${executionResult.system_metrics.memory_percent || 'N/A'}%
+- GPU Utilization: ${executionResult.system_metrics.gpu_utilization || 'N/A'}%` : ''}
+
+${executionResult.benchmarks ? `**Performance Benchmarks:**
+- Matrix Multiplication: ${executionResult.benchmarks.matrix_multiplication?.time || 'N/A'}s (Score: ${executionResult.benchmarks.matrix_multiplication?.score || 'N/A'})
+- Memory Access: ${executionResult.benchmarks.memory_access?.time || 'N/A'}s (Score: ${executionResult.benchmarks.memory_access?.score || 'N/A'})
+- CPU Intensive: ${executionResult.benchmarks.cpu_intensive?.time || 'N/A'}s (Score: ${executionResult.benchmarks.cpu_intensive?.score || 'N/A'})` : ''}
+`;
+    }
+
+    // Update context with manually attached context
+    updateChatState(messages, contextData + manualContext);
+    
+    // Show a visual confirmation that context was attached
+    if (manualContext.trim()) {
+      const contextMessage: Message = {
+        id: Date.now(),
+        type: "user",
+        content: "📎 Context attached (Code + Execution Results)",
+        timestamp: new Date(),
+      };
+      updateChatState([...messages, contextMessage], contextData + manualContext);
+    }
   };
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
-    const userMessage: Message = {
+    if (!inputMessage.trim()) return;    const userMessage: Message = {
       id: Date.now(),
       type: "user",
       content: inputMessage,
       timestamp: new Date(),
     };
-    setMessages((prev) => [...prev, userMessage]);
+    updateChatState([...messages, userMessage], contextData);
     setInputMessage("");
     setIsLoading(true);
 
     try {
-      const botReply = await sendApiQuery(userMessage.content);
+      // Send query with context if available
+      const botReply = await sendApiQuery(userMessage.content, true);
       await animateBotMessage(botReply);
     } finally {
       setIsLoading(false);
@@ -131,14 +327,33 @@ const LLMChatbot = () => {
   };
 
   return (
-    <Card className="h-full shadow-lg flex flex-col">
-      <CardHeader className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-t-lg flex-shrink-0">
+    <Card className="h-full shadow-lg flex flex-col">      <CardHeader className="bg-asu-maroon-dark text-white rounded-t-lg flex-shrink-0">
         <CardTitle className="flex items-center gap-2">
           <Bot className="w-5 h-5" />
-          LLM GPU Tutor
+          SparkyGPT
           <Badge variant="secondary" className="ml-auto bg-white/20 text-white">
             {isLoading ? "Thinking..." : "Online"}
           </Badge>
+          {contextData && (
+            <Badge variant="secondary" className="bg-green-500/20 text-white border-green-300">
+              Context Active
+            </Badge>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (onResetChat) {
+                onResetChat();
+              } else {
+                updateChatState([], "");
+              }
+            }}
+            className="text-white hover:bg-white/20 p-1 h-8 w-8"
+            title="Reset Chat"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </Button>
         </CardTitle>
       </CardHeader>
 
@@ -165,7 +380,7 @@ const LLMChatbot = () => {
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                     message.type === "user"
-                      ? "bg-purple-500 text-white"
+                      ? "bg-asu-maroon text-white"
                       : "bg-gray-200 text-gray-600"
                   }`}
                 >
@@ -184,7 +399,7 @@ const LLMChatbot = () => {
                   <div
                     className={`inline-block p-3 rounded-lg ${
                       message.type === "user"
-                        ? "bg-purple-500 text-white rounded-br-sm"
+                        ? "bg-asu-maroon text-white rounded-br-sm"
                         : "bg-gray-100 text-gray-800 rounded-bl-sm"
                     }`}
                     style={{
@@ -274,11 +489,19 @@ const LLMChatbot = () => {
             {/* This div is used for scrolling to bottom */}
             <div ref={messagesEndRef} />
           </div>
-        </div>
-
-        {/* Input area */}
+        </div>        {/* Input area */}
         <div className="border-t p-4 flex-shrink-0">
           <div className="flex gap-2">
+            <Button
+              onClick={handleAttachContext}
+              variant="outline"
+              size="icon"
+              disabled={isLoading || (!codeContext && !executionResult)}
+              title="Attach current code and execution results as context"
+              className="flex-shrink-0"
+            >
+              <Paperclip className="w-4 h-4" />
+            </Button>
             <textarea
               ref={inputRef}
               value={inputMessage}
@@ -290,7 +513,7 @@ const LLMChatbot = () => {
                   handleSendMessage();
                 }
               }}
-              className="flex-1 resize-none rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="flex-1 resize-none rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-asu-maroon disabled:bg-gray-100 disabled:cursor-not-allowed"
               disabled={isLoading}
               rows={1}
               style={{
@@ -301,32 +524,52 @@ const LLMChatbot = () => {
             />
             <Button
               onClick={handleSendMessage}
-              className="bg-purple-500 hover:bg-purple-600"
+              className="bg-asu-maroon hover:bg-asu-maroon-dark"
               size="icon"
               disabled={isLoading || !inputMessage.trim()}
             >
               <Send className="w-4 h-4" />
             </Button>
-          </div>
-          <div className="flex gap-2 mt-2">
+          </div>          <div className="flex gap-2 mt-2 flex-wrap">
             <Badge
               variant="outline"
               className="text-xs cursor-pointer hover:bg-gray-50"
+              onClick={() => setInputMessage("Explain the CUDA programming model and its benefits for parallel computing.")}
             >
               CUDA basics
             </Badge>
             <Badge
               variant="outline"
               className="text-xs cursor-pointer hover:bg-gray-50"
+              onClick={() => setInputMessage("How can I optimize memory usage in GPU programming?")}
             >
               Memory optimization
             </Badge>
             <Badge
               variant="outline"
               className="text-xs cursor-pointer hover:bg-gray-50"
+              onClick={() => setInputMessage("What are best practices for GPU performance tuning?")}
             >
               Performance tuning
             </Badge>
+            {(codeContext || executionResult) && (
+              <Badge
+                variant="outline"
+                className="text-xs cursor-pointer hover:bg-blue-50 border-blue-300 text-blue-700"
+                onClick={handleAttachContext}
+              >
+                📎 Attach Context
+              </Badge>
+            )}
+            {contextData && (
+              <Badge
+                variant="outline"
+                className="text-xs cursor-pointer hover:bg-green-50 border-green-300 text-green-700"
+                onClick={() => setInputMessage("Analyze my recent code execution and suggest improvements.")}
+              >
+                📊 Analyze Results
+              </Badge>
+            )}
           </div>
         </div>
       </CardContent>

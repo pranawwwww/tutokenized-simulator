@@ -122,7 +122,7 @@ image = wp.empty(shape=(resolution[1], resolution[0], 3), dtype=float)
 
 # ---------- Frame Rendering Loop ----------
 
-print("Starting WARP volume simulation for GIF generation...")
+print("Starting Simulation for GIF generation...")
 gif_frames = []
 
 for frame in range(num_frames):

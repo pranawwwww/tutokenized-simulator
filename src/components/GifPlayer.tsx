@@ -1,8 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, RefreshCw, Maximize2, Play } from 'lucide-react';
+import { Slider } from "@/components/ui/slider";
+import { 
+  Download, 
+  RefreshCw, 
+  Maximize2, 
+  Play, 
+  Pause,
+  SkipBack,
+  SkipForward,
+  FastForward,
+  Rewind
+} from 'lucide-react';
 
 interface GifPlayerProps {
   gifData?: string; // base64-encoded GIF data
@@ -30,6 +41,95 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
   standalone = true
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [currentFrame, setCurrentFrame] = useState(0);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [showControls, setShowControls] = useState(false);
+  const gifRef = useRef<HTMLImageElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationRef = useRef<number>();
+  const lastFrameTimeRef = useRef<number>(0);
+
+  // Speed options
+  const speedOptions = [0.25, 0.5, 1, 2, 4];
+
+  // Calculate frame duration based on FPS and speed
+  const frameDuration = (1000 / fps) / playbackSpeed;
+  // Animation loop for controlled playback
+  useEffect(() => {
+    if (!isPlaying || frameCount <= 1) return;
+
+    const animate = (timestamp: number) => {
+      if (timestamp - lastFrameTimeRef.current >= frameDuration) {
+        setCurrentFrame(prev => (prev + 1) % frameCount);
+        lastFrameTimeRef.current = timestamp;
+      }
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [isPlaying, frameDuration, frameCount]);
+
+  // Control GIF animation speed using CSS animation
+  useEffect(() => {
+    if (gifRef.current) {
+      const img = gifRef.current;
+      
+      // Apply CSS to control GIF speed
+      if (playbackSpeed !== 1) {
+        img.style.animationDuration = `${1/playbackSpeed}s`;
+        img.style.animationIterationCount = 'infinite';
+        img.style.animationTimingFunction = 'linear';
+      } else {
+        img.style.animationDuration = '';
+        img.style.animationIterationCount = '';
+        img.style.animationTimingFunction = '';
+      }
+      
+      // Pause/play the GIF
+      img.style.animationPlayState = isPlaying ? 'running' : 'paused';
+    }
+  }, [playbackSpeed, isPlaying]);
+
+  // Handle restart by reloading the GIF
+  const restartGif = () => {
+    if (gifRef.current && actualGifUrl) {
+      const currentSrc = gifRef.current.src;
+      gifRef.current.src = '';
+      setTimeout(() => {
+        if (gifRef.current) {
+          gifRef.current.src = currentSrc;
+        }
+      }, 50);
+    }
+    setCurrentFrame(0);
+  };
+
+  // Toggle play/pause
+  const togglePlayback = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  // Navigate frames
+  const goToFrame = (frame: number) => {
+    setCurrentFrame(Math.max(0, Math.min(frame, frameCount - 1)));
+  };
+
+  const nextFrame = () => {
+    goToFrame(currentFrame + 1);
+  };
+
+  const prevFrame = () => {
+    goToFrame(currentFrame - 1);
+  };
+  const restart = () => {
+    restartGif();
+  };
   // Prefer gifBytestream if present, then gifData (base64), else gifUrl, else filename
   const getGifBlobUrl = () => {
     if (gifBytestream && gifBytestream.length > 0) {
@@ -176,9 +276,62 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
 
     return (
       <div className="space-y-4">
-        {/* Control buttons */}
-        <div className="flex justify-between items-center">
-          <div className="flex gap-2">
+        {/* Playback Controls */}
+        <div className="flex justify-between items-center p-3 bg-slate-800/50 rounded-lg border border-gray-600">
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={togglePlayback}
+              variant="outline"
+              size="sm"
+              className="text-white border-white/30 hover:bg-white/10"
+            >
+              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+            </Button>
+            <Button
+              onClick={restart}
+              variant="outline"
+              size="sm"
+              className="text-white border-white/30 hover:bg-white/10"
+            >
+              <SkipBack className="w-4 h-4" />
+            </Button>
+            <Button
+              onClick={prevFrame}
+              variant="outline"
+              size="sm"
+              className="text-white border-white/30 hover:bg-white/10"
+            >
+              <Rewind className="w-4 h-4" />
+            </Button>
+            <Button
+              onClick={nextFrame}
+              variant="outline"
+              size="sm"
+              className="text-white border-white/30 hover:bg-white/10"
+            >
+              <FastForward className="w-4 h-4" />
+            </Button>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-white text-sm">Speed:</span>
+              <select 
+                value={playbackSpeed} 
+                onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
+                className="bg-slate-700 text-white px-2 py-1 rounded border border-gray-600 text-sm"
+              >
+                {speedOptions.map(speed => (
+                  <option key={speed} value={speed}>{speed}x</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-white text-sm">Frame:</span>
+              <span className="text-blue-300 font-mono text-sm">{currentFrame + 1}/{frameCount}</span>
+            </div>
+            
             <Button
               onClick={downloadGif}
               variant="outline"
@@ -186,7 +339,7 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
               className="text-white border-white/30 hover:bg-white/10"
             >
               <Download className="w-4 h-4 mr-2" />
-              Download GIF
+              Download
             </Button>
             <Button
               onClick={toggleFullscreen}
@@ -195,31 +348,97 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
               className="text-white border-white/30 hover:bg-white/10"
             >
               <Maximize2 className="w-4 h-4" />
-              {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
             </Button>
           </div>
+        </div>
+
+        {/* Frame Progress Bar */}
+        {frameCount > 1 && (
+          <div className="px-3">
+            <Slider
+              value={[currentFrame]}
+              onValueChange={(value) => goToFrame(value[0])}
+              max={frameCount - 1}
+              step={1}
+              className="w-full"
+            />
+          </div>
+        )}
+
+        {/* Control buttons */}
+        <div className="flex justify-between items-center">
+          <div className="flex gap-2">
+          </div>
         </div>        {/* GIF display with fixed dimensions and scroll */}
-        <div className={`relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border-2 border-gray-600 overflow-auto ${isFullscreen ? 'fixed inset-4 z-50 h-[calc(100vh-100px)] w-[calc(100vw-32px)]' : 'w-full h-96'}`}>
-          <img
-            src={actualGifUrl}
-            alt="WARP Volume Animation"
-            className="rounded shadow-lg"
-            style={{ 
-              imageRendering: 'crisp-edges',
-              maxWidth: 'none',
-              maxHeight: 'none',
-              height: 'auto',
-              width: 'auto',
-              display: 'block',
-              margin: '16px'
-            }}
-            onError={(e) => {
-              console.error('❌ GIF failed to load:', e);
-              console.error('GIF URL details:', actualGifUrl);
-            }}
-            onLoad={() => {
-              console.log('✅ GIF successfully loaded');
-            }}          />
+        <div 
+          className={`relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border-2 border-gray-600 overflow-auto ${isFullscreen ? 'fixed inset-4 z-50 h-[calc(100vh-100px)] w-[calc(100vw-32px)]' : 'w-full h-96'}`}
+          onMouseEnter={() => setShowControls(true)}
+          onMouseLeave={() => setShowControls(false)}
+        >
+          <div style={{ position: 'relative' }}>
+            <img
+              ref={gifRef}
+              src={actualGifUrl}
+              alt="Animation"
+              className="rounded shadow-lg"
+              style={{ 
+                imageRendering: 'crisp-edges',
+                maxWidth: 'none',
+                maxHeight: 'none',
+                height: 'auto',
+                width: 'auto',
+                display: 'block',
+                margin: '16px',
+                animationPlayState: isPlaying ? 'running' : 'paused'
+              }}
+              onError={(e) => {
+                console.error('❌ GIF failed to load:', e);
+                console.error('GIF URL details:', actualGifUrl);
+              }}
+              onLoad={() => {
+                console.log('✅ GIF successfully loaded');
+              }}
+            />
+            
+            {/* Hover controls overlay */}
+            {showControls && (
+              <div className="absolute bottom-4 left-4 right-4 bg-black/80 backdrop-blur-sm rounded-lg p-3 border border-gray-600">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={togglePlayback}
+                      variant="outline"
+                      size="sm"
+                      className="text-white border-white/30 hover:bg-white/10"
+                    >
+                      {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                    </Button>
+                    <Button
+                      onClick={restart}
+                      variant="outline"
+                      size="sm"
+                      className="text-white border-white/30 hover:bg-white/10"
+                    >
+                      <SkipBack className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-white">Speed:</span>
+                    <select 
+                      value={playbackSpeed} 
+                      onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
+                      className="bg-slate-700 text-white px-2 py-1 rounded border border-gray-600 text-xs"
+                    >
+                      {speedOptions.map(speed => (
+                        <option key={speed} value={speed}>{speed}x</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
           {/* Debug overlay */}
           <div className="absolute top-2 left-2 bg-black/80 text-white text-xs p-3 rounded-lg opacity-75 hover:opacity-100 transition-opacity max-w-sm w-auto backdrop-blur-sm border border-gray-600 z-10">
             <div className="space-y-1">
@@ -281,11 +500,10 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
   return (
     <div className="space-y-4">
       {/* GIF Player */}
-      <Card className={`bg-gradient-to-br from-slate-900/90 to-purple-900/90 backdrop-blur-xl border border-white/20 ${isFullscreen ? 'fixed inset-4 z-50' : ''}`}>
-        <CardHeader className="pb-2">
+      <Card className={`bg-gradient-to-br from-slate-900/90 to-purple-900/90 backdrop-blur-xl border border-white/20 ${isFullscreen ? 'fixed inset-4 z-50' : ''}`}>        <CardHeader className="pb-2">
           <div className="flex justify-between items-center">
             <CardTitle className="text-white flex items-center gap-2">
-              🎞️ WARP Volume Animation
+              🎞️ Animation
               <Badge variant="secondary" className="ml-2">
                 {frameCount} frames • {fps} FPS
               </Badge>
@@ -310,45 +528,207 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
                 {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
               </Button>
             </div>
-          </div>        </CardHeader>        <CardContent className="p-4">          <div className={`relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border-2 border-gray-600 overflow-auto ${isFullscreen ? 'h-[calc(100vh-200px)] w-full' : 'w-full h-96'}`}>
+          </div>
+          
+          {/* Playback Controls */}
+          <div className="flex justify-between items-center mt-4 p-3 bg-slate-800/50 rounded-lg border border-gray-600">
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={togglePlayback}
+                variant="outline"
+                size="sm"
+                className="text-white border-white/30 hover:bg-white/10"
+              >
+                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              </Button>
+              <Button
+                onClick={restart}
+                variant="outline"
+                size="sm"
+                className="text-white border-white/30 hover:bg-white/10"
+              >
+                <SkipBack className="w-4 h-4" />
+              </Button>
+              <Button
+                onClick={prevFrame}
+                variant="outline"
+                size="sm"
+                className="text-white border-white/30 hover:bg-white/10"
+              >
+                <Rewind className="w-4 h-4" />
+              </Button>
+              <Button
+                onClick={nextFrame}
+                variant="outline"
+                size="sm"
+                className="text-white border-white/30 hover:bg-white/10"
+              >
+                <FastForward className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-white text-sm">Speed:</span>
+                <select 
+                  value={playbackSpeed} 
+                  onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
+                  className="bg-slate-700 text-white px-2 py-1 rounded border border-gray-600 text-sm"
+                >
+                  {speedOptions.map(speed => (
+                    <option key={speed} value={speed}>{speed}x</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-white text-sm">Frame:</span>
+                <span className="text-blue-300 font-mono text-sm">{currentFrame + 1}/{frameCount}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Frame Progress Bar */}
+          {frameCount > 1 && (
+            <div className="mt-3">
+              <Slider
+                value={[currentFrame]}
+                onValueChange={(value) => goToFrame(value[0])}
+                max={frameCount - 1}
+                step={1}
+                className="w-full"
+              />
+            </div>
+          )}
+        </CardHeader>        <CardContent className="p-4">          <div 
+            className={`relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border-2 border-gray-600 overflow-auto ${isFullscreen ? 'h-[calc(100vh-200px)] w-full' : 'w-full h-96'}`}
+            onMouseEnter={() => setShowControls(true)}
+            onMouseLeave={() => setShowControls(false)}
+          >
             {/* --- Enhanced GIF display with scroll functionality --- */}
             {gifBlobUrl ? (
-              <img
-                src={gifBlobUrl}
-                alt="WARP Volume Animation"
-                className="rounded shadow-lg"
-                style={{ 
-                  imageRendering: 'crisp-edges',
-                  maxWidth: 'none',
-                  maxHeight: 'none',
-                  height: 'auto',
-                  width: 'auto',
-                  display: 'block',
-                  margin: '16px'
-                }}
-                onError={(e) => {
-                  console.error('❌ Img tag failed to load GIF blob:', e);
-                  console.error('Blob URL details:', gifBlobUrl);
-                }}
-                onLoad={() => {
-                  console.log('✅ Img tag successfully loaded GIF blob');
-                }}
-              />
+              <div style={{ position: 'relative' }}>
+                <img
+                  ref={gifRef}
+                  src={gifBlobUrl}
+                  alt="Animation"
+                  className="rounded shadow-lg"
+                  style={{ 
+                    imageRendering: 'crisp-edges',
+                    maxWidth: 'none',
+                    maxHeight: 'none',
+                    height: 'auto',
+                    width: 'auto',
+                    display: 'block',
+                    margin: '16px',
+                    animationPlayState: isPlaying ? 'running' : 'paused'
+                  }}
+                  onError={(e) => {
+                    console.error('❌ Img tag failed to load GIF blob:', e);
+                    console.error('Blob URL details:', gifBlobUrl);
+                  }}
+                  onLoad={() => {
+                    console.log('✅ Img tag successfully loaded GIF blob');
+                  }}
+                />
+                
+                {/* Hover controls overlay */}
+                {showControls && (
+                  <div className="absolute bottom-4 left-4 right-4 bg-black/80 backdrop-blur-sm rounded-lg p-3 border border-gray-600">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          onClick={togglePlayback}
+                          variant="outline"
+                          size="sm"
+                          className="text-white border-white/30 hover:bg-white/10"
+                        >
+                          {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                        </Button>
+                        <Button
+                          onClick={restart}
+                          variant="outline"
+                          size="sm"
+                          className="text-white border-white/30 hover:bg-white/10"
+                        >
+                          <SkipBack className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-white">Speed:</span>
+                        <select 
+                          value={playbackSpeed} 
+                          onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
+                          className="bg-slate-700 text-white px-2 py-1 rounded border border-gray-600 text-xs"
+                        >
+                          {speedOptions.map(speed => (
+                            <option key={speed} value={speed}>{speed}x</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : actualGifUrl ? (
-              <img
-                src={actualGifUrl}
-                alt="WARP Volume Animation"
-                className="rounded shadow-lg"
-                style={{ 
-                  imageRendering: 'crisp-edges',
-                  maxWidth: 'none',
-                  maxHeight: 'none',
-                  height: 'auto',
-                  width: 'auto',
-                  display: 'block',
-                  margin: '16px'
-                }}
-              />
+              <div style={{ position: 'relative' }}>
+                <img
+                  ref={gifRef}
+                  src={actualGifUrl}
+                  alt="Animation"
+                  className="rounded shadow-lg"
+                  style={{ 
+                    imageRendering: 'crisp-edges',
+                    maxWidth: 'none',
+                    maxHeight: 'none',
+                    height: 'auto',
+                    width: 'auto',
+                    display: 'block',
+                    margin: '16px',
+                    animationPlayState: isPlaying ? 'running' : 'paused'
+                  }}
+                />
+                
+                {/* Hover controls overlay */}
+                {showControls && (
+                  <div className="absolute bottom-4 left-4 right-4 bg-black/80 backdrop-blur-sm rounded-lg p-3 border border-gray-600">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          onClick={togglePlayback}
+                          variant="outline"
+                          size="sm"
+                          className="text-white border-white/30 hover:bg-white/10"
+                        >
+                          {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                        </Button>
+                        <Button
+                          onClick={restart}
+                          variant="outline"
+                          size="sm"
+                          className="text-white border-white/30 hover:bg-white/10"
+                        >
+                          <SkipBack className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-white">Speed:</span>
+                        <select 
+                          value={playbackSpeed} 
+                          onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
+                          className="bg-slate-700 text-white px-2 py-1 rounded border border-gray-600 text-xs"
+                        >
+                          {speedOptions.map(speed => (
+                            <option key={speed} value={speed}>{speed}x</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-blue-900/50 to-purple-900/50 flex items-center justify-center rounded-lg min-h-[350px]">
                 <div className="text-center text-white">
@@ -379,7 +759,11 @@ const GifPlayer: React.FC<GifPlayerProps> = ({
                   <span className="text-gray-300">Resolution:</span> 
                   <span className="ml-1 font-mono text-yellow-300">{resolution[0]}×{resolution[1]}</span>
                 </div>
-                <div className="text-gray-400 text-[10px] mt-2 italic">Scroll to navigate if needed</div>
+                <div>
+                  <span className="text-gray-300">Playback:</span> 
+                  <span className="ml-1 font-mono text-purple-300">{playbackSpeed}x speed</span>
+                </div>
+                <div className="text-gray-400 text-[10px] mt-2 italic">Hover for controls • Scroll to navigate</div>
               </div>
             </div>
           </div>

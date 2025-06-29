@@ -160,9 +160,8 @@ const Benchmarks: React.FC<BenchmarksProps> = ({ executionResult }) => {
   const pythonVersion = benchmarks?.python_version ?? '3.11.0';
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Excellent": return "bg-green-100 text-green-800";
-      case "Good": return "bg-blue-100 text-blue-800";
+    switch (status) {      case "Excellent": return "bg-nvidia-green/20 text-nvidia-green-dark";
+      case "Good": return "bg-asu-gold/20 text-asu-gold-dark";
       case "Average": return "bg-yellow-100 text-yellow-800";
       default: return "bg-gray-100 text-gray-800";
     }
@@ -170,10 +169,10 @@ const Benchmarks: React.FC<BenchmarksProps> = ({ executionResult }) => {
 
   return (
     <Card className="shadow-lg">
-      <CardHeader className="bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-t-lg">
+      <CardHeader className="bg-gradient-to-r from-nvidia-green to-asu-gold text-black rounded-t-lg">
         <CardTitle className="flex items-center gap-2">
           <BarChart3 className="w-5 h-5" />
-          {isWarpSimulation ? 'WARP Volume Simulation Benchmarks' : 'Performance Benchmarks'}
+          {isWarpSimulation ? 'Simulation Benchmarks' : 'Performance Benchmarks'}
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6">
@@ -181,7 +180,7 @@ const Benchmarks: React.FC<BenchmarksProps> = ({ executionResult }) => {
         {isWarpSimulation && benchmarks?.system_info && (
           <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
             <h3 className="font-bold text-purple-800 mb-3 flex items-center gap-2">
-              🎬 WARP Volume Simulation Metrics
+              🎬 Simulation Metrics
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div className="bg-white p-3 rounded border">
@@ -306,13 +305,13 @@ const Benchmarks: React.FC<BenchmarksProps> = ({ executionResult }) => {
             )}
           </div>
           {!benchmarks && (
-            <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-700">
+            <div className="mt-3 p-2 bg-yellow-100 border border-yellow-400 rounded text-sm text-yellow-800">
               ℹ️ Run volume.py simulation to see real WARP benchmark results
             </div>
           )}
           {benchmarks && isWarpSimulation && (
             <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-700">
-              ✅ Live data from latest WARP volume simulation
+              ✅ Live data from latest Simulation
             </div>
           )}
         </div>

@@ -82,7 +82,6 @@ export class HybridSolVMExecutor {
   private maxRetries: number;
   private retryDelay: number;
   private pollInterval: number;
-
   constructor(options: {
     taskQueueUrl?: string;
     resultQueueUrl?: string;
@@ -90,9 +89,9 @@ export class HybridSolVMExecutor {
     retryDelay?: number;
     pollInterval?: number;
   } = {}) {
-    // Use a cloud-based message queue service (Firebase, AWS SQS, or custom API)
-    this.taskQueueUrl = options.taskQueueUrl || 'https://your-message-queue-api.com/tasks';
-    this.resultQueueUrl = options.resultQueueUrl || 'https://your-message-queue-api.com/results';
+    // Use environment variables or fallback to local development URLs
+    this.taskQueueUrl = options.taskQueueUrl || import.meta.env.VITE_TASK_QUEUE_URL || 'http://localhost:5000/tasks';
+    this.resultQueueUrl = options.resultQueueUrl || import.meta.env.VITE_RESULT_QUEUE_URL || 'http://localhost:5000/results';
     this.clientId = this.generateClientId();
     this.maxRetries = options.maxRetries || 3;
     this.retryDelay = options.retryDelay || 2000;

@@ -20,27 +20,25 @@ const TopBar = () => {
                 <Wifi className="w-5 h-5 text-green-600" />
               ) : (
                 <WifiOff className="w-5 h-5 text-red-500" />
-              )}
-              <Zap className="w-5 h-5 text-green-600" />
+              )}              <Zap className="w-5 h-5 text-nvidia-green" />
               <span className="font-semibold text-gray-800">NVIDIA APIs</span>
             </div>
             
             <div className="flex items-center gap-3">
-              <div className={`status-dot ${nvidiaConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
+              <div className={`status-dot ${nvidiaConnected ? 'bg-nvidia-green' : 'bg-red-400'}`}></div>
               <Badge 
                 variant={nvidiaConnected ? "default" : "secondary"} 
-                className={`${nvidiaConnected ? 'bg-green-100 text-green-800 border-green-300' : 'bg-red-100 text-red-800 border-red-300'} font-medium`}
+                className={`${nvidiaConnected ? 'bg-nvidia-green/20 text-nvidia-green-dark border-nvidia-green' : 'bg-red-100 text-red-800 border-red-300'} font-medium`}
               >
                 {nvidiaConnected ? "Connected" : "Disconnected"}
               </Badge>
               <Button
                 size="sm"
                 variant={nvidiaConnected ? "outline" : "default"}
-                onClick={() => setNvidiaConnected(!nvidiaConnected)}
-                className={`transition-all duration-300 ${
+                onClick={() => setNvidiaConnected(!nvidiaConnected)}                className={`transition-all duration-300 ${
                   nvidiaConnected 
                     ? 'hover:bg-red-50 hover:text-red-600 hover:border-red-300' 
-                    : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0'
+                    : 'bg-gradient-to-r from-nvidia-green to-nvidia-green-light hover:from-nvidia-green-dark hover:to-nvidia-green text-white border-0'
                 }`}
               >
                 {nvidiaConnected ? "Disconnect" : "Connect"}
@@ -48,16 +46,15 @@ const TopBar = () => {
             </div>
           </div>
 
-          {/* Sol Access Toggle */}
-          <div className="flex items-center gap-4 glass-card bg-white/60 backdrop-blur-sm border border-gray-200/50 px-6 py-3 rounded-2xl hover-lift">
-            <Database className="w-5 h-5 text-purple-600" />
+          {/* Sol Access Toggle */}          <div className="flex items-center gap-4 glass-card bg-white/60 backdrop-blur-sm border border-gray-200/50 px-6 py-3 rounded-2xl hover-lift">
+            <Database className="w-5 h-5 text-asu-maroon" />
             <span className="font-semibold text-gray-800">Sol Access</span>
             <div className="flex items-center gap-3">
-              <div className={`status-dot ${solAccess ? 'bg-purple-400' : 'bg-gray-400'}`}></div>
+              <div className={`status-dot ${solAccess ? 'bg-asu-maroon' : 'bg-gray-400'}`}></div>
               <Switch
                 checked={solAccess}
                 onCheckedChange={setSolAccess}
-                className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-purple-500 data-[state=checked]:to-indigo-500"
+                className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-asu-maroon data-[state=checked]:to-asu-maroon-light"
               />
             </div>
           </div>

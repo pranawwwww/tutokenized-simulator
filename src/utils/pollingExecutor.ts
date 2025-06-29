@@ -38,7 +38,6 @@ export class SolVMPollingExecutor {
   private maxRetries: number;
   private retryDelay: number;
   private currentTask: TaskSubmission | null = null;
-
   constructor(options: {
     taskQueueUrl?: string;
     resultQueueUrl?: string;
@@ -46,8 +45,8 @@ export class SolVMPollingExecutor {
     maxRetries?: number;
     retryDelay?: number;
   } = {}) {
-    this.taskQueueUrl = options.taskQueueUrl || 'https://your-message-queue-api.com/tasks';
-    this.resultQueueUrl = options.resultQueueUrl || 'https://your-message-queue-api.com/results';
+    this.taskQueueUrl = options.taskQueueUrl || import.meta.env.VITE_TASK_QUEUE_URL || 'http://localhost:5000/tasks';
+    this.resultQueueUrl = options.resultQueueUrl || import.meta.env.VITE_RESULT_QUEUE_URL || 'http://localhost:5000/results';
     this.vmId = this.generateVMId();
     this.pollInterval = options.pollInterval || 5000; // 5 seconds
     this.maxRetries = options.maxRetries || 3;

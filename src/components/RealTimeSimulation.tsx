@@ -167,11 +167,10 @@ const RealTimeSimulation = () => {
                 </div>
               </div>
             </div>
-            
-            <div className="bg-yellow-50 border border-yellow-200 p-6 rounded-lg">
-              <h3 className="font-bold text-yellow-800 mb-4">Efficiency Score</h3>
-              <div className="text-6xl font-bold text-yellow-700 mb-2">A+</div>
-              <p className="text-yellow-600 font-medium">Power efficiency</p>
+              <div className="bg-yellow-100 border border-yellow-400 p-6 rounded-lg">
+              <h3 className="font-bold text-yellow-900 mb-4">Efficiency Score</h3>
+              <div className="text-6xl font-bold text-yellow-800 mb-2">A+</div>
+              <p className="text-yellow-700 font-medium">Power efficiency</p>
             </div>
           </div>
           

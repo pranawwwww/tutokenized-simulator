@@ -16,9 +16,23 @@ export default {
 			screens: {
 				'2xl': '1400px'
 			}
-		},
-		extend: {
+		},		extend: {
 			colors: {
+				// NVIDIA & ASU Brand Colors
+				nvidia: {
+					green: '#76B900',
+					black: '#1a1a1a',
+					'green-light': '#8FD14F',
+					'green-dark': '#5A8B00',
+				},				asu: {
+					gold: '#D4A012',
+					maroon: '#8C1D40',
+					'gold-light': '#E6B224',
+					'gold-dark': '#B8900F',
+					'maroon-light': '#A63458',
+					'maroon-dark': '#6B1832',
+				},
+				// Existing color system
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',

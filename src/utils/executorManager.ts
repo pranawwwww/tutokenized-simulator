@@ -18,7 +18,7 @@ export interface ExecutorConfig {
 
 // Default configuration - can be overridden by environment variables
 export const DEFAULT_EXECUTOR_CONFIG: ExecutorConfig = {
-  type: (import.meta.env.VITE_EXECUTOR_TYPE as ExecutorType) || 'local', // Default to local for development
+  type: (import.meta.env.VITE_EXECUTOR_TYPE as ExecutorType) || 'auto', // Use environment variable, default to auto
   hybridConfig: {
     taskQueueUrl: import.meta.env.VITE_TASK_QUEUE_URL || 'http://localhost:5000/tasks',
     resultQueueUrl: import.meta.env.VITE_RESULT_QUEUE_URL || 'http://localhost:5000/results',

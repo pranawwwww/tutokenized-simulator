@@ -1,73 +1,90 @@
-# Welcome to your Lovable project
+# Tutokenized Simulator
 
-## Project info
+A modern, interactive web platform for running, visualizing, and debugging Python code with GPU/CPU simulation and LLM-powered tutoring. Designed for education, research, and rapid prototyping of code that interacts with both local and cloud (SOL VM) execution environments.
 
-**URL**: https://lovable.dev/projects/3ff974d0-2207-49c4-a777-a1b2bba4a888
+---
 
-## How can I edit this code?
+## 🚀 Features
 
-There are several ways of editing your application.
+- **Python Code Editor**: Write and edit Python code in the browser
+- **Local & SOL VM Execution**: Run code on your local machine or remotely via the SOL VM cloud
+- **GPU/CPU Simulation**: Visualize hardware performance, benchmarks, and output
+- **LLM Tutor**: Get instant feedback, explanations, and code suggestions from an AI assistant
+- **Debug Console**: View real-time output, errors, and system metrics
+- **Animated Output**: Supports GIF/video output for code that generates visualizations
+- **Easy Deployment**: One-click deploy to GitHub Pages, Netlify, or Vercel
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/3ff974d0-2207-49c4-a777-a1b2bba4a888) and start prompting.
+## 🛠️ Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### 1. Clone the Repository
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
 git clone <YOUR_GIT_URL>
+cd tutokenized-simulator
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### 2. Install Dependencies
 
-# Step 3: Install the necessary dependencies.
-npm i
+```sh
+npm install
+```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### 3. Configure Environment
+
+- Copy `.env.production` to `.env.local` for local development, or edit `.env.production` for deployment.
+- Set the required variables for your backend/executor URLs and API keys.
+
+### 4. Run the Development Server
+
+```sh
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+- Open [http://localhost:8080](http://localhost:8080) in your browser.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+---
 
-**Use GitHub Codespaces**
+## ⚡ Deployment (GitHub Actions)
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+This project is ready for automatic deployment using GitHub Actions.
 
-## What technologies are used for this project?
+1. **Push to `main` branch**: The workflow in `.github/workflows/deploy-frontend.yml` will build and deploy your app.
+2. **Configure repository secrets**: Go to GitHub → Settings → Secrets and variables → Actions, and add all variables from `.env.production` as repository secrets.
+3. **Enable GitHub Pages**: In your repo settings, set Pages source to "GitHub Actions".
+4. **Access your site**: After a successful workflow run, your app will be live at `https://<your-username>.github.io/<your-repo-name>/`.
 
-This project is built with:
+_You can also deploy to Netlify or Vercel by adding the appropriate secrets._
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+---
 
-## How can I deploy this project?
+## 🧑‍💻 Usage
 
-Simply open [Lovable](https://lovable.dev/projects/3ff974d0-2207-49c4-a777-a1b2bba4a888) and click on Share -> Publish.
+- **Write Python code** in the editor panel.
+- **Run code** using the "Run Code" button. Output and hardware metrics will appear in the debug panel.
+- **Switch execution** between local and SOL VM (cloud) as needed.
+- **Use the LLM Tutor** to get explanations, code help, and context-aware suggestions.
+- **Download or share** your results, GIFs, and logs.
 
-## Can I connect a custom domain to my Lovable project?
+---
 
-Yes, you can!
+## 📦 Project Structure
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- `src/` — React frontend source code
+- `ml_examples/` — Example Python scripts for simulation
+- `local-executor/` — Node.js backend for local code execution
+- `.github/workflows/` — GitHub Actions deployment workflows
+- `.env.production` — Example environment configuration
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+---
+
+## 🤝 Contributing
+
+Pull requests and issues are welcome! Please open an issue for bugs, feature requests, or questions.
+
+---
+
+## 📄 License
+
+MIT License. See [LICENSE](LICENSE) for details.

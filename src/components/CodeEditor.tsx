@@ -241,12 +241,7 @@ print("Ready for SOL VM execution!")`);
       <CardHeader className="bg-purple-500 text-white p-6">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-3">
-            <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-            <span className="text-2xl font-bold">Code Editor</span>
-            <Badge className={`border ${getExecutorBadgeColor(currentExecutor)}`}>
-              {getExecutorIcon(currentExecutor)}
-              <span className="ml-1 capitalize">{currentExecutor}</span>
-            </Badge>
+            <div className="w-3 h-3 bg-green-400 rounded-full"></div>            <span className="text-2xl font-bold">Code Editor</span>
             <span className="text-sm font-medium bg-white/20 px-3 py-1 rounded-full border border-white/30">
               LLM-Assisted
             </span>

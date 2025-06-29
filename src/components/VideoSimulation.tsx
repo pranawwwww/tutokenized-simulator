@@ -447,7 +447,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
               <CardTitle className="text-white flex items-center gap-2">
-                🎞️ WARP Volume Animation
+                🎞️ Animation
                 <Badge variant="secondary" className="ml-2">
                   GIF • {actualVideoData?.frame_count} frames
                 </Badge>
@@ -457,7 +457,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
                   onClick={downloadGif}
                   variant="outline"
                   size="sm"
-                  className="text-white border-white/30 hover:bg-white/10"
+                  className="text-black border-white/30 hover:bg-white/10"
                 >
                   <Download className="w-4 h-4 mr-2" />
                   Download
@@ -473,7 +473,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
                 onClick={zoomOut}
                 variant="outline"
                 size="sm"
-                className="text-white border-white/30 hover:bg-white/10"
+                className="text-black border-white/30 hover:bg-white/10"
               >
                 <ZoomOut className="w-4 h-4" />
               </Button>
@@ -481,7 +481,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
                 onClick={resetZoom}
                 variant="outline"
                 size="sm"
-                className="text-white border-white/30 hover:bg-white/10 min-w-[80px]"
+                className="text-black border-white/30 hover:bg-white/10 min-w-[80px]"
               >
                 {Math.round(zoomLevel * 100)}%
               </Button>
@@ -489,7 +489,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
                 onClick={zoomIn}
                 variant="outline"
                 size="sm"
-                className="text-white border-white/30 hover:bg-white/10"
+                className="text-black border-white/30 hover:bg-white/10"
               >
                 <ZoomIn className="w-4 h-4" />
               </Button>
@@ -502,7 +502,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
                 <div className="p-4 flex items-start justify-start min-w-full min-h-full">
                   <img
                     src={gifUrl}
-                    alt="WARP Volume Animation"
+                    alt="Animation"
                     className="rounded shadow-lg block"
                     style={{ 
                       imageRendering: 'crisp-edges',
@@ -627,7 +627,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
         <div className="glass-card bg-gradient-to-br from-slate-900/90 to-purple-900/90 backdrop-blur-xl border border-white/20 rounded-3xl overflow-hidden hover-lift">
           <div className="p-6">
             <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-3">
-              🎥 WARP Volume Simulation
+              🎥 Simulation
               <Badge className="bg-green-100 text-green-800 border-green-300">
                 {frames.length} frames
               </Badge>
@@ -769,7 +769,7 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
                   <Play className="w-12 h-12 ml-1" />
                 )}
               </div>
-              <h3 className="text-xl font-semibold mb-2">WARP Volume Simulation</h3>
+              <h3 className="text-xl font-semibold mb-2">Simulation</h3>
               <p className="text-blue-200">
                 {executionResult ? 
                   (executionResult.success ? 

@@ -191,7 +191,7 @@ const AdvancedVideoPlayer: React.FC<AdvancedVideoPlayerProps> = ({
 <!DOCTYPE html>
 <html>
 <head>
-    <title>WARP Volume Simulation</title>
+    <title>Simulation</title>
     <style>
         body { margin: 0; padding: 20px; background: #000; color: #fff; font-family: Arial; }
         canvas { max-width: 100%; height: auto; display: block; margin: 0 auto; }
@@ -200,7 +200,7 @@ const AdvancedVideoPlayer: React.FC<AdvancedVideoPlayerProps> = ({
     </style>
 </head>
 <body>
-    <h1>WARP Volume Simulation</h1>
+    <h1>Simulation</h1>
     <canvas id="canvas"></canvas>
     <div class="controls">
         <button onclick="togglePlay()">Play/Pause</button>
@@ -275,7 +275,7 @@ const AdvancedVideoPlayer: React.FC<AdvancedVideoPlayerProps> = ({
               <div className="w-24 h-24 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
                 <Play className="w-12 h-12 ml-1" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">WARP Volume Simulation</h3>
+              <h3 className="text-xl font-semibold mb-2">Simulation</h3>
               <p className="text-blue-200">Ready for video playback</p>
             </div>
           </div>
@@ -291,7 +291,7 @@ const AdvancedVideoPlayer: React.FC<AdvancedVideoPlayerProps> = ({
         <CardHeader className="pb-2">
           <div className="flex justify-between items-center">
             <CardTitle className="text-white flex items-center gap-2">
-              🎬 WARP Volume Simulation
+              🎬 Simulation
               <Badge variant="secondary" className="ml-2">
                 {frames.length} frames • {fps} FPS
               </Badge>

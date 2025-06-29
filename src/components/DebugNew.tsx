@@ -201,9 +201,8 @@ print(f"2 + 2 = {result}")`);
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Bug className="w-6 h-6 text-purple-600" />
+      <div className="flex items-center justify-between">        <div className="flex items-center gap-3">
+          <Bug className="w-6 h-6 text-asu-maroon" />
           <h2 className="text-2xl font-bold text-gray-800">Debug Console</h2>
           <Badge variant="outline" className="text-xs">
             {filteredEntries.length} entries
@@ -228,7 +227,7 @@ print(f"2 + 2 = {result}")`);
           <CardTitle className="flex items-center gap-2">
             <Server className="w-5 h-5" />
             Backend Connection
-            <Badge className={isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+            <Badge className={isConnected ? 'bg-nvidia-green/20 text-nvidia-green-dark' : 'bg-red-100 text-red-800'}>
               {isConnected ? 'Connected' : 'Disconnected'}
             </Badge>
           </CardTitle>

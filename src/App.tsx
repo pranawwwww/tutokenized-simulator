@@ -29,7 +29,8 @@ const App = () => {
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <BrowserRouter>              <Routes>
+            <BrowserRouter basename={import.meta.env.MODE === 'production' || import.meta.env.VITE_GITHUB_PAGES === 'true' ? "/tutokenized-simulator" : undefined}>
+              <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/simple" element={<SimpleIndex />} />
                 <Route path="/minimal" element={<MinimalIndex />} />

@@ -33,9 +33,8 @@ const StatusBar = () => {
   const getStatusIcon = () => {
     switch (status) {
       case 'training':
-        return <Activity className="w-4 h-4 animate-pulse" />;
-      case 'complete':
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
+        return <Activity className="w-4 h-4 animate-pulse" />;      case 'complete':
+        return <CheckCircle className="w-4 h-4 text-nvidia-green" />;
       case 'error':
         return <AlertCircle className="w-4 h-4 text-red-600" />;
       default:
@@ -57,11 +56,10 @@ const StatusBar = () => {
   };
 
   const getStatusColor = () => {
-    switch (status) {
-      case 'training':
-        return 'bg-blue-100 text-blue-800';
+    switch (status) {      case 'training':
+        return 'bg-asu-gold/20 text-asu-gold-dark';
       case 'complete':
-        return 'bg-green-100 text-green-800';
+        return 'bg-nvidia-green/20 text-nvidia-green-dark';
       case 'error':
         return 'bg-red-100 text-red-800';
       default:
@@ -93,19 +91,18 @@ const StatusBar = () => {
           )}
         </div>
 
-        <div className="flex items-center gap-4 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+        <div className="flex items-center gap-4 text-sm text-gray-600">          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-nvidia-green rounded-full animate-pulse"></div>
             <span>GPU Ready</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <div className="w-2 h-2 bg-asu-gold rounded-full"></div>
             <span>API Connected</span>
           </div>
           {status === 'idle' && (
             <button
               onClick={startTraining}
-              className="text-purple-600 hover:text-purple-800 font-medium"
+              className="text-asu-maroon hover:text-asu-maroon-dark font-medium"
             >
               Start Training
             </button>

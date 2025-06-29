@@ -28,13 +28,12 @@ interface ExecutorSettingsProps {
 
 const ExecutorSettings: React.FC<ExecutorSettingsProps> = ({ onConfigChange }) => {
   const [status, setStatus] = useState<any>(null);
-  const [queueStatus, setQueueStatus] = useState<any>(null);
-  const [config, setConfig] = useState<ExecutorConfig>({
+  const [queueStatus, setQueueStatus] = useState<any>(null);  const [config, setConfig] = useState<ExecutorConfig>({
     type: 'auto',
     hybridConfig: {
-      taskQueueUrl: process.env.REACT_APP_TASK_QUEUE_URL || '',
-      resultQueueUrl: process.env.REACT_APP_RESULT_QUEUE_URL || '',
-      apiKey: process.env.REACT_APP_API_KEY || '',
+      taskQueueUrl: import.meta.env.VITE_TASK_QUEUE_URL || '',
+      resultQueueUrl: import.meta.env.VITE_RESULT_QUEUE_URL || '',
+      apiKey: import.meta.env.VITE_API_KEY || '',
       maxRetries: 3,
       retryDelay: 2000,
       pollInterval: 3000
@@ -93,10 +92,9 @@ const ExecutorSettings: React.FC<ExecutorSettingsProps> = ({ onConfigChange }) =
       onConfigChange(newConfig);
     }
   };
-
   const getStatusIcon = (healthy: boolean) => {
     return healthy ? (
-      <CheckCircle className="w-4 h-4 text-green-500" />
+      <CheckCircle className="w-4 h-4 text-nvidia-green" />
     ) : (
       <XCircle className="w-4 h-4 text-red-500" />
     );
