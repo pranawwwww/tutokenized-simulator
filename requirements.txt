@@ -9,4 +9,5 @@ gunicorn>=21.2.0
 warp-lang
 matplotlib
 pyglet
+pillow>=10.0.0
 # usd-core

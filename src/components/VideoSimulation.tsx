@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Play, Pause, RotateCcw, Volume2, Maximize2, ZoomIn, ZoomOut, Download } from 'lucide-react';
 import SimpleVideoPlayer from './SimpleVideoPlayer';
+import { useSystemMetrics } from '@/contexts/SystemMetricsContext';
 
 interface VideoSimulationProps {
   executionResult?: {
@@ -27,6 +28,62 @@ interface VideoSimulationProps {
       gif_url?: string;
       gif_filename?: string;
       file_size_bytes?: number;
+      // Benchmark data from volume.py
+      benchmark_data?: {
+        system_info?: {
+          cpu?: {
+            name?: string;
+            cores?: number;
+            threads?: number;
+            utilization?: number;
+            frequency?: number;
+          };
+          memory?: {
+            total?: number;
+            used?: number;
+            available?: number;
+            percent?: number;
+          };
+          gpu?: {
+            name?: string;
+            memory_total?: number;
+            memory_used?: number;
+            utilization?: number;
+          };
+          platform?: {
+            system?: string;
+            version?: string;
+            architecture?: string;
+            python_version?: string;
+          };
+        };
+        performance_metrics?: {
+          total_time?: number;
+          frame_count?: number;
+          avg_frame_time?: number;
+          avg_field_generation?: number;
+          avg_marching_cubes?: number;
+          avg_rendering?: number;
+          gif_creation_time?: number;
+          frame_conversion_time?: number;
+          effective_fps?: number;
+        };
+        individual_frame_times?: number[];
+        field_generation_times?: number[];
+        marching_cubes_times?: number[];
+        rendering_times?: number[];
+        simulation_settings?: {
+          resolution?: [number, number];
+          dimension?: number;
+          num_frames?: number;
+          fps?: number;
+          torus_altitude?: number;
+          torus_major_radius?: number;
+          torus_minor_radius?: number;
+          smooth_min_radius?: number;
+        };
+        error_occurred?: boolean;
+      };
     };
   };
 }
@@ -35,6 +92,87 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration] = useState(120); // 2 minutes fallback
+  const { updateMetrics, updateBenchmarks } = useSystemMetrics();
+
+  // Process benchmark data from volume.py when execution result changes
+  useEffect(() => {
+    if (executionResult?.success && executionResult.video_data?.benchmark_data) {
+      const benchmarkData = executionResult.video_data.benchmark_data;
+      
+      // Update system metrics if available
+      if (benchmarkData.system_info) {
+        const systemInfo = benchmarkData.system_info;
+        const metrics = {
+          cpu: {
+            usage: systemInfo.cpu?.utilization || 0,
+            threads: systemInfo.cpu?.threads || 1,
+            clockSpeed: (systemInfo.cpu?.frequency || 0) / 1000, // Convert MHz to GHz
+            temperature: 0, // Not available from volume.py
+            model: systemInfo.cpu?.name || 'Unknown CPU'
+          },
+          memory: {
+            total: systemInfo.memory?.total || 0,
+            used: systemInfo.memory?.used || 0,
+            free: systemInfo.memory?.available || 0,
+            usage_percent: systemInfo.memory?.percent || 0
+          },
+          gpu: {
+            usage: systemInfo.gpu?.utilization || 0,
+            memory_used: systemInfo.gpu?.memory_used || 0,
+            memory_total: systemInfo.gpu?.memory_total || 0,
+            temperature: 0, // Not available from volume.py
+            name: systemInfo.gpu?.name || 'Unknown GPU'
+          },
+          system: {
+            platform: systemInfo.platform?.system || 'Unknown',
+            arch: systemInfo.platform?.architecture || 'Unknown',
+            uptime: 0,
+            loadavg: []
+          }
+        };
+        updateMetrics(metrics);
+      }
+
+      // Create benchmark results from volume.py performance metrics
+      if (benchmarkData.performance_metrics) {
+        const perfMetrics = benchmarkData.performance_metrics;
+        const benchmarks = {
+          matrix_multiplication: {
+            time: perfMetrics.avg_field_generation || 0,
+            score: perfMetrics.avg_field_generation ? Math.round(1000 / (perfMetrics.avg_field_generation * 10)) : 0,
+            status: (perfMetrics.avg_field_generation || 0) < 0.1 ? 'Excellent' : 
+                   (perfMetrics.avg_field_generation || 0) < 0.2 ? 'Good' : 'Average'
+          },
+          memory_access: {
+            time: perfMetrics.avg_marching_cubes || 0,
+            score: perfMetrics.avg_marching_cubes ? Math.round(1000 / (perfMetrics.avg_marching_cubes * 5)) : 0,
+            status: (perfMetrics.avg_marching_cubes || 0) < 0.1 ? 'Excellent' : 
+                   (perfMetrics.avg_marching_cubes || 0) < 0.3 ? 'Good' : 'Average'
+          },
+          cpu_intensive: {
+            time: perfMetrics.avg_rendering || 0,
+            score: perfMetrics.avg_rendering ? Math.round(1000 / (perfMetrics.avg_rendering * 8)) : 0,
+            status: (perfMetrics.avg_rendering || 0) < 0.1 ? 'Excellent' : 
+                   (perfMetrics.avg_rendering || 0) < 0.25 ? 'Good' : 'Average'
+          },
+          io_operations: {
+            time: perfMetrics.frame_conversion_time || 0,
+            score: perfMetrics.frame_conversion_time ? Math.round(1000 / (perfMetrics.frame_conversion_time * 2)) : 0,
+            status: (perfMetrics.frame_conversion_time || 0) < 1.0 ? 'Excellent' : 
+                   (perfMetrics.frame_conversion_time || 0) < 3.0 ? 'Good' : 'Average'
+          },
+          python_version: benchmarkData.system_info?.platform?.python_version || '3.x',
+          system_info: {
+            warp_simulation: true,
+            total_simulation_time: perfMetrics.total_time,
+            effective_fps: perfMetrics.effective_fps,
+            frame_count: perfMetrics.frame_count
+          }
+        };
+        updateBenchmarks(benchmarks);
+      }
+    }
+  }, [executionResult, updateMetrics, updateBenchmarks]);
 
   // Debug logging
   useEffect(() => {
@@ -45,6 +183,9 @@ const VideoSimulation: React.FC<VideoSimulationProps> = ({ executionResult }) =>
       videoDataType: executionResult?.video_data?.type,
       frameCount: executionResult?.video_data?.frames?.length,
       outputLength: executionResult?.output?.length,
+      hasBenchmarkData: !!executionResult?.video_data?.benchmark_data,
+      benchmarkSystemInfo: !!executionResult?.video_data?.benchmark_data?.system_info,
+      benchmarkPerformanceMetrics: !!executionResult?.video_data?.benchmark_data?.performance_metrics,
       fullExecutionResult: executionResult
     });
   }, [executionResult]);

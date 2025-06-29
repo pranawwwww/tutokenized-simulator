@@ -9,31 +9,34 @@ import { useSystemMetrics } from '@/contexts/SystemMetricsContext';
 const Benchmarks = () => {
   const { benchmarks, metrics } = useSystemMetrics();
 
+  // Check if we have WARP simulation data
+  const isWarpSimulation = benchmarks?.system_info?.warp_simulation;
+  
   // Create benchmark data from real results or fallback to static data
   const benchmarkData = [
     { 
-      name: "Matrix Multiplication", 
+      name: isWarpSimulation ? "Field Generation (SDF)" : "Matrix Multiplication", 
       score: benchmarks?.matrix_multiplication.score ?? 8950, 
       progress: Math.min((benchmarks?.matrix_multiplication.score ?? 8950) / 100, 100), 
       status: benchmarks?.matrix_multiplication.status ?? "Excellent",
       time: benchmarks?.matrix_multiplication.time ?? 0
     },
     { 
-      name: "Memory Access Pattern", 
+      name: isWarpSimulation ? "Marching Cubes Algorithm" : "Memory Access Pattern", 
       score: benchmarks?.memory_access.score ?? 7240, 
       progress: Math.min((benchmarks?.memory_access.score ?? 7240) / 100, 100), 
       status: benchmarks?.memory_access.status ?? "Good",
       time: benchmarks?.memory_access.time ?? 0
     },
     { 
-      name: "CPU Intensive Operations", 
+      name: isWarpSimulation ? "GPU Rendering Pipeline" : "CPU Intensive Operations", 
       score: benchmarks?.cpu_intensive.score ?? 9100, 
       progress: Math.min((benchmarks?.cpu_intensive.score ?? 9100) / 100, 100), 
       status: benchmarks?.cpu_intensive.status ?? "Excellent",
       time: benchmarks?.cpu_intensive.time ?? 0
     },
     { 
-      name: "I/O Operations", 
+      name: isWarpSimulation ? "Frame Conversion & GIF Creation" : "I/O Operations", 
       score: benchmarks?.io_operations?.score ?? 6800, 
       progress: Math.min((benchmarks?.io_operations?.score ?? 6800) / 100, 100), 
       status: benchmarks?.io_operations?.status ?? "Average",
@@ -58,16 +61,50 @@ const Benchmarks = () => {
       case "Average": return "bg-yellow-100 text-yellow-800";
       default: return "bg-gray-100 text-gray-800";
     }
-  };
-  return (
+  };  return (
     <Card className="shadow-lg">
       <CardHeader className="bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-t-lg">
         <CardTitle className="flex items-center gap-2">
           <BarChart3 className="w-5 h-5" />
-          Performance Benchmarks
+          {isWarpSimulation ? 'WARP Volume Simulation Benchmarks' : 'Performance Benchmarks'}
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6">
+        {/* WARP-specific metrics section */}
+        {isWarpSimulation && benchmarks?.system_info && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+            <h3 className="font-bold text-purple-800 mb-3 flex items-center gap-2">
+              🎬 WARP Volume Simulation Metrics
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="bg-white p-3 rounded border">
+                <span className="text-gray-600 block">Total Time</span>
+                <span className="font-mono text-purple-700 font-semibold">
+                  {benchmarks.system_info.total_simulation_time?.toFixed(2) || 'N/A'}s
+                </span>
+              </div>
+              <div className="bg-white p-3 rounded border">
+                <span className="text-gray-600 block">Frames Rendered</span>
+                <span className="font-mono text-purple-700 font-semibold">
+                  {benchmarks.system_info.frame_count || 'N/A'}
+                </span>
+              </div>
+              <div className="bg-white p-3 rounded border">
+                <span className="text-gray-600 block">Effective FPS</span>
+                <span className="font-mono text-purple-700 font-semibold">
+                  {benchmarks.system_info.effective_fps?.toFixed(1) || 'N/A'}
+                </span>
+              </div>
+              <div className="bg-white p-3 rounded border">
+                <span className="text-gray-600 block">GPU</span>
+                <span className="font-mono text-purple-700 font-semibold text-xs">
+                  {metrics?.gpu.name?.split(' ').slice(-2).join(' ') || 'Unknown'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div className="bg-blue-50 p-4 rounded-lg">
             <div className="flex items-center gap-3 mb-2">
@@ -127,10 +164,10 @@ const Benchmarks = () => {
               </div>
             </div>
           ))}
-        </div>
-
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <h4 className="font-medium text-gray-800 mb-2">System Configuration</h4>
+        </div>        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+          <h4 className="font-medium text-gray-800 mb-2">
+            {isWarpSimulation ? 'WARP Simulation Configuration' : 'System Configuration'}
+          </h4>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-gray-600">GPU Model:</span>
@@ -148,10 +185,27 @@ const Benchmarks = () => {
               <span className="text-gray-600">CPU Cores:</span>
               <span className="ml-2 font-mono">{metrics?.cpu.threads ?? 16}</span>
             </div>
+            {isWarpSimulation && (
+              <>
+                <div>
+                  <span className="text-gray-600">Simulation Type:</span>
+                  <span className="ml-2 font-mono text-purple-600">WARP Volume</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Engine:</span>
+                  <span className="ml-2 font-mono text-purple-600">NVIDIA Warp</span>
+                </div>
+              </>
+            )}
           </div>
           {!benchmarks && (
             <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-700">
-              ℹ️ Run code execution to see real benchmark results
+              ℹ️ Run volume.py simulation to see real WARP benchmark results
+            </div>
+          )}
+          {benchmarks && isWarpSimulation && (
+            <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-700">
+              ✅ Live data from latest WARP volume simulation
             </div>
           )}
         </div>

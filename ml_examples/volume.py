@@ -9,6 +9,11 @@ import warp.render
 import json
 import base64
 import io
+import time
+import platform
+import psutil
+import subprocess
+import sys
 
 # Warp config
 wp.config.quiet = True
@@ -16,6 +21,143 @@ wp.init()
 
 # Enable headless rendering for server environments
 pyglet.options["headless"] = True
+
+# ---------- Benchmarking and System Info ----------
+
+class BenchmarkTracker:
+    def __init__(self):
+        self.frame_times = []
+        self.field_generation_times = []
+        self.marching_cubes_times = []
+        self.rendering_times = []
+        self.total_start_time = None
+        self.frame_start_time = None
+        
+    def start_total_timer(self):
+        self.total_start_time = time.perf_counter()
+        
+    def start_frame_timer(self):
+        self.frame_start_time = time.perf_counter()
+        
+    def log_field_generation(self, duration):
+        self.field_generation_times.append(duration)
+        
+    def log_marching_cubes(self, duration):
+        self.marching_cubes_times.append(duration)
+        
+    def log_rendering(self, duration):
+        self.rendering_times.append(duration)
+        
+    def end_frame_timer(self):
+        if self.frame_start_time:
+            frame_duration = time.perf_counter() - self.frame_start_time
+            self.frame_times.append(frame_duration)
+            return frame_duration
+        return 0
+        
+    def get_total_time(self):
+        if self.total_start_time:
+            return time.perf_counter() - self.total_start_time
+        return 0
+        
+    def get_averages(self):
+        return {
+            'avg_frame_time': np.mean(self.frame_times) if self.frame_times else 0,
+            'avg_field_generation': np.mean(self.field_generation_times) if self.field_generation_times else 0,
+            'avg_marching_cubes': np.mean(self.marching_cubes_times) if self.marching_cubes_times else 0,
+            'avg_rendering': np.mean(self.rendering_times) if self.rendering_times else 0,
+            'total_time': self.get_total_time(),
+            'frame_count': len(self.frame_times)
+        }
+
+def get_gpu_info():
+    """Get GPU information if available"""
+    gpu_info = {"name": "Unknown", "memory_total": 0, "memory_used": 0, "utilization": 0}
+    
+    try:
+        # Try nvidia-smi for NVIDIA GPUs
+        result = subprocess.run(['nvidia-smi', '--query-gpu=name,memory.total,memory.used,utilization.gpu', '--format=csv,noheader,nounits'], 
+                               capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            lines = result.stdout.strip().split('\n')
+            if lines and lines[0].strip():
+                parts = lines[0].split(', ')
+                if len(parts) >= 4:
+                    try:
+                        gpu_info = {
+                            "name": parts[0].strip(),
+                            "memory_total": int(parts[1].strip()),
+                            "memory_used": int(parts[2].strip()),
+                            "utilization": int(parts[3].strip())
+                        }
+                    except (ValueError, IndexError):
+                        pass
+    except Exception as e:
+        print(f"Note: GPU info not available: {e}")
+    
+    return gpu_info
+
+def get_system_info():
+    """Get comprehensive system information"""
+    try:
+        # Get CPU utilization with a shorter interval for production
+        cpu_percent = psutil.cpu_percent(interval=0.5)
+        memory = psutil.virtual_memory()
+        gpu_info = get_gpu_info()
+        
+        # Get CPU frequency safely
+        cpu_freq = None
+        try:
+            freq_info = psutil.cpu_freq()
+            cpu_freq = freq_info.current if freq_info else 0
+        except:
+            cpu_freq = 0
+        
+        return {
+            "cpu": {
+                "name": platform.processor() or "Unknown CPU",
+                "cores": psutil.cpu_count(logical=False) or 1,
+                "threads": psutil.cpu_count(logical=True) or 1,
+                "utilization": round(cpu_percent, 1),
+                "frequency": round(cpu_freq, 0) if cpu_freq else 0
+            },
+            "memory": {
+                "total": memory.total,
+                "used": memory.used,
+                "available": memory.available,
+                "percent": round(memory.percent, 1)
+            },
+            "gpu": gpu_info,
+            "platform": {
+                "system": platform.system(),
+                "version": platform.version(),
+                "architecture": platform.architecture()[0],
+                "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+            }
+        }
+    except Exception as e:
+        print(f"Warning: Could not get system info: {e}")
+        return {
+            "cpu": {"name": "Unknown", "cores": 1, "threads": 1, "utilization": 0, "frequency": 0},
+            "memory": {"total": 0, "used": 0, "available": 0, "percent": 0},
+            "gpu": {"name": "Unknown", "memory_total": 0, "memory_used": 0, "utilization": 0},
+            "platform": {"system": "Unknown", "version": "Unknown", "architecture": "Unknown", "python_version": "Unknown"}
+        }
+
+def make_json_safe(obj):
+    """Ensure all values in object are JSON serializable"""
+    if isinstance(obj, (list, tuple)):
+        return [make_json_safe(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {k: make_json_safe(v) for k, v in obj.items()}
+    elif isinstance(obj, (np.integer, np.floating)):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif obj is None or isinstance(obj, (int, float, str, bool)):
+        return obj
+    else:
+        return str(obj)
 
 # ---------- SDF Functions ----------
 
@@ -85,6 +227,9 @@ def make_field(
 
 # ---------- Simulation Settings ----------
 
+# Initialize benchmark tracker
+benchmark = BenchmarkTracker()
+
 resolution = (512, 384)
 num_frames = 30  # Reduced for faster execution
 fps = 30
@@ -123,11 +268,19 @@ image = wp.empty(shape=(resolution[1], resolution[0], 3), dtype=float)
 
 renders = []
 print("Starting WARP volume simulation...")
+print("Collecting system information...")
+
+# Get initial system info
+system_info = get_system_info()
+benchmark.start_total_timer()
 
 try:
     for frame in range(num_frames):
         print(f"Rendering frame {frame + 1}/{num_frames}")
+        benchmark.start_frame_timer()
         
+        # Time field generation
+        field_start = time.perf_counter()
         wp.launch(
             make_field,
             dim=field.shape,
@@ -141,9 +294,19 @@ try:
             ),
             outputs=(field,),
         )
-
+        wp.synchronize()  # Ensure GPU work is complete
+        field_time = time.perf_counter() - field_start
+        benchmark.log_field_generation(field_time)
+        
+        # Time marching cubes
+        mc_start = time.perf_counter()
         mc.surface(field, 0.0)
-
+        wp.synchronize()  # Ensure GPU work is complete
+        mc_time = time.perf_counter() - mc_start
+        benchmark.log_marching_cubes(mc_time)
+        
+        # Time rendering
+        render_start = time.perf_counter()
         renderer.begin_frame(frame / num_frames)
         renderer.render_mesh(
             "surface",
@@ -153,13 +316,20 @@ try:
             update_topology=True,
         )
         renderer.end_frame()
-
         renderer.get_pixels(image, split_up_tiles=False, mode="rgb")
+        render_time = time.perf_counter() - render_start
+        benchmark.log_rendering(render_time)
+        
+        # End frame timing
+        frame_total = benchmark.end_frame_timer()
+        
+        # Log frame performance
+        print(f"  Frame {frame + 1} timings: Field={field_time:.4f}s, MC={mc_time:.4f}s, Render={render_time:.4f}s, Total={frame_total:.4f}s")
+        
         renders.append(wp.clone(image, device="cpu", pinned=True))
 
 except Exception as e:
-    print(f"ERROR during frame rendering: {e}")
-    # Output error format that VideoSimulation can handle
+    print(f"ERROR during frame rendering: {e}")    # Output error format that VideoSimulation can handle with benchmark data
     error_output = {
         'type': 'gif_animation',
         'error': f'Frame rendering failed: {str(e)}',
@@ -167,7 +337,12 @@ except Exception as e:
         'resolution': resolution,
         'frame_count': 0,
         'duration': 0,
-        'file_size_bytes': 0
+        'file_size_bytes': 0,
+        'benchmark_data': make_json_safe({
+            'system_info': system_info,
+            'performance_metrics': benchmark.get_averages(),
+            'error_occurred': True
+        })
     }
     print(f"GIF_OUTPUT:{json.dumps(error_output)}")
     exit(1)
@@ -195,6 +370,7 @@ def frame_to_pil_image(frame_array):
 
 print("Converting frames to GIF animation...")
 gif_frames = []
+conversion_start = time.perf_counter()
 
 try:
     for i, render in enumerate(renders):
@@ -207,9 +383,11 @@ try:
         else:
             print(f"WARNING: Failed to convert frame {i + 1}")
 
+    conversion_time = time.perf_counter() - conversion_start
+    print(f"Frame conversion completed in {conversion_time:.4f}s")
+
 except Exception as e:
-    print(f"ERROR during frame conversion: {e}")
-    # Output error format
+    print(f"ERROR during frame conversion: {e}")    # Output error format with benchmark data
     error_output = {
         'type': 'gif_animation',
         'error': f'Frame conversion failed: {str(e)}',
@@ -217,7 +395,12 @@ except Exception as e:
         'resolution': resolution,
         'frame_count': 0,
         'duration': 0,
-        'file_size_bytes': 0
+        'file_size_bytes': 0,
+        'benchmark_data': make_json_safe({
+            'system_info': system_info,
+            'performance_metrics': benchmark.get_averages(),
+            'error_occurred': True
+        })
     }
     print(f"GIF_OUTPUT:{json.dumps(error_output)}")
     exit(1)
@@ -226,6 +409,7 @@ except Exception as e:
 if gif_frames:
     try:
         print("Creating GIF animation...")
+        gif_creation_start = time.perf_counter()
         gif_buffer = io.BytesIO()
         gif_frames[0].save(
             gif_buffer,
@@ -236,16 +420,42 @@ if gif_frames:
             loop=0,  # Infinite loop
             optimize=True
         )
+        gif_creation_time = time.perf_counter() - gif_creation_start
         
         # Get raw byte data for frontend compatibility
         gif_bytes = gif_buffer.getvalue()
         gif_bytestream = list(gif_bytes)  # Convert to list of integers
         
         # Convert to base64 as backup
-        gif_base64 = base64.b64encode(gif_bytes).decode('utf-8')
+        gif_base64 = base64.b64encode(gif_bytes).decode('utf-8')        # Get final system info and benchmark data
+        final_system_info = get_system_info()
+        performance_metrics = benchmark.get_averages()
         
-        # Output GIF data as JSON for backend to capture
-        # This format matches what VideoSimulation.tsx expects
+        # Print comprehensive benchmark report
+        print("\n" + "="*50)
+        print("WARP VOLUME SIMULATION BENCHMARK REPORT")
+        print("="*50)
+        print(f"Total Simulation Time: {performance_metrics['total_time']:.4f}s")
+        print(f"Frames Rendered: {performance_metrics['frame_count']}")
+        print(f"Average Frame Time: {performance_metrics['avg_frame_time']:.4f}s")
+        print(f"Average Field Generation: {performance_metrics['avg_field_generation']:.4f}s")
+        print(f"Average Marching Cubes: {performance_metrics['avg_marching_cubes']:.4f}s")
+        print(f"Average Rendering: {performance_metrics['avg_rendering']:.4f}s")
+        print(f"GIF Creation Time: {gif_creation_time:.4f}s")
+        print(f"Frame Conversion Time: {conversion_time:.4f}s")
+        print(f"Effective FPS: {performance_metrics['frame_count']/performance_metrics['total_time']:.2f}")
+        
+        if final_system_info:
+            print(f"\nSystem Performance:")
+            print(f"CPU Utilization: {final_system_info.get('cpu', {}).get('utilization', 0):.1f}%")
+            print(f"Memory Usage: {final_system_info.get('memory', {}).get('percent', 0):.1f}%")
+            gpu_info = final_system_info.get('gpu', {})
+            if gpu_info.get('name') != 'Unknown':
+                print(f"GPU: {gpu_info.get('name', 'Unknown')}")
+                print(f"GPU Utilization: {gpu_info.get('utilization', 0)}%")
+                print(f"GPU Memory: {gpu_info.get('memory_used', 0)}/{gpu_info.get('memory_total', 0)} MB")
+        print("="*50)
+          # Output GIF data as JSON for backend to capture with comprehensive benchmark data
         gif_output = {
             'type': 'gif_animation',
             'gif_data': gif_base64,  # base64 format as backup
@@ -255,7 +465,29 @@ if gif_frames:
             'frame_count': len(gif_frames),
             'duration': len(gif_frames) / fps,
             'file_size_bytes': len(gif_bytes),
-            'gif_filename': f'warp_volume_{len(gif_frames)}frames.gif'
+            'gif_filename': f'warp_volume_{len(gif_frames)}frames.gif',
+            'benchmark_data': make_json_safe({
+                'system_info': final_system_info,
+                'performance_metrics': {
+                    **performance_metrics,
+                    'gif_creation_time': gif_creation_time,
+                    'frame_conversion_time': conversion_time,
+                    'effective_fps': performance_metrics['frame_count']/performance_metrics['total_time'] if performance_metrics['total_time'] > 0 else 0
+                },
+                'individual_frame_times': benchmark.frame_times,
+                'field_generation_times': benchmark.field_generation_times,
+                'marching_cubes_times': benchmark.marching_cubes_times,
+                'rendering_times': benchmark.rendering_times,
+                'simulation_settings': {
+                    'resolution': resolution,
+                    'dimension': dim,
+                    'num_frames': num_frames,
+                    'fps': fps,
+                    'torus_altitude': torus_altitude,
+                    'torus_major_radius': torus_major_radius,
+                    'torus_minor_radius': torus_minor_radius,
+                    'smooth_min_radius': smooth_min_radius                }
+            })
         }
         
         print(f"GIF_OUTPUT:{json.dumps(gif_output)}")
@@ -265,7 +497,12 @@ if gif_frames:
     
     except Exception as e:
         print(f"ERROR during GIF creation: {e}")
-        # Output error format
+        # Output error format with benchmark data
+        try:
+            final_system_info = get_system_info() if 'final_system_info' not in locals() else final_system_info
+        except:
+            final_system_info = system_info
+            
         error_output = {
             'type': 'gif_animation',
             'error': f'GIF creation failed: {str(e)}',
@@ -273,12 +510,17 @@ if gif_frames:
             'resolution': resolution,
             'frame_count': len(gif_frames),
             'duration': 0,
-            'file_size_bytes': 0
+            'file_size_bytes': 0,
+            'benchmark_data': make_json_safe({
+                'system_info': final_system_info,
+                'performance_metrics': benchmark.get_averages(),
+                'error_occurred': True
+            })
         }
         print(f"GIF_OUTPUT:{json.dumps(error_output)}")
 
 else:
-    # Output error format that VideoSimulation can handle
+    # Output error format that VideoSimulation can handle with benchmark data
     error_output = {
         'type': 'gif_animation',
         'error': 'No frames were generated for GIF creation',
@@ -286,7 +528,12 @@ else:
         'resolution': resolution,
         'frame_count': 0,
         'duration': 0,
-        'file_size_bytes': 0
+        'file_size_bytes': 0,
+        'benchmark_data': make_json_safe({
+            'system_info': system_info,
+            'performance_metrics': benchmark.get_averages(),
+            'error_occurred': True
+        })
     }
     print(f"GIF_OUTPUT:{json.dumps(error_output)}")
     print("ERROR: No frames were generated for GIF creation.")
